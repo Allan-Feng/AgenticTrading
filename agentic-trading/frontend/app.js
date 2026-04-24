@@ -281,43 +281,93 @@ function updateUI() {
 }
 
 /**
- * Trigger backtest run on backend
+ * Trigger backtest run on backend (asynchronous)
  */
 async function triggerBacktest() {
     const btn = document.getElementById('runBacktestBtn');
     const originalText = btn.textContent;
     
     try {
-        btn.textContent = '⏳ Running backtest (may take 2-5 min)...';
+        btn.textContent = '⏳ Starting backtest...';
         btn.disabled = true;
         
         console.log('🚀 Triggering backtest...');
         
-        const response = await fetch(`${API_BASE}/backtest/run?start_date=2026-03-01&end_date=2026-04-23`, {
+        // Trigger backtest (non-blocking)
+        const response = await fetch(`${API_BASE}/backtest/run?start_date=2026-04-15&end_date=2026-04-23`, {
             method: 'POST'
         });
         
         const data = await response.json();
         
         if (data.success) {
-            console.log('✅ Backtest completed!', data.runs_count, 'runs');
-            alert(`✅ Backtest completed! Found ${data.runs_count} runs.\n\nReloading dashboard...`);
+            console.log('✅ Backtest started in background');
+            btn.textContent = '⏳ Running... (checking status)';
             
-            // Reload data
-            await loadData();
-            btn.textContent = originalText;
+            // Poll for completion
+            await pollBacktestStatus(btn, originalText);
         } else {
-            console.error('❌ Backtest failed:', data.error);
-            alert(`❌ Backtest failed:\n\n${data.error}`);
+            console.error('❌ Failed to start backtest:', data.error);
+            alert(`❌ Failed to start backtest:\n\n${data.error}`);
             btn.textContent = originalText;
+            btn.disabled = false;
         }
     } catch (error) {
         console.error('❌ Error triggering backtest:', error);
         alert(`❌ Error: ${error.message}`);
         btn.textContent = originalText;
-    } finally {
         btn.disabled = false;
     }
+}
+
+/**
+ * Poll backtest status until completion
+ */
+async function pollBacktestStatus(btn, originalText) {
+    const maxAttempts = 60;  // 5 minutes (polling every 5 seconds)
+    let attempts = 0;
+    
+    while (attempts < maxAttempts) {
+        try {
+            const response = await fetch(`${API_BASE}/backtest/status`);
+            const status = await response.json();
+            
+            if (!status.running) {
+                // Backtest finished
+                if (status.error) {
+                    console.error('❌ Backtest error:', status.error);
+                    alert(`❌ Backtest failed:\n\n${status.error}`);
+                } else if (status.success) {
+                    console.log('✅ Backtest completed!', status.runs_count, 'runs');
+                    alert(`✅ Backtest completed! Found ${status.runs_count} runs.\n\nReloading dashboard...`);
+                    
+                    // Reload data
+                    await loadData();
+                }
+                
+                btn.textContent = originalText;
+                btn.disabled = false;
+                return;
+            }
+            
+            // Still running - update button and wait
+            attempts++;
+            const dots = '.'.repeat((attempts % 3) + 1);
+            btn.textContent = `⏳ Running${dots} (${Math.floor(attempts * 5 / 60)}m)`;
+            
+            // Wait 5 seconds before next poll
+            await new Promise(resolve => setTimeout(resolve, 5000));
+        } catch (error) {
+            console.error('Error checking backtest status:', error);
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            attempts++;
+        }
+    }
+    
+    // Timeout
+    alert('⏱️ Backtest is taking too long (>5 minutes). It may still be running in the background.\n\nTry reloading the page in a moment.');
+    btn.textContent = originalText;
+    btn.disabled = false;
 }
 
 /**

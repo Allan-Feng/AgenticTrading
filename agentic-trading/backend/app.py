@@ -173,79 +173,103 @@ async def health():
     return {"status": "ok"}
 
 
-@app.post("/backtest/run")
-async def run_backtest_endpoint(start_date: str = "2026-04-15", end_date: str = "2026-04-23"):
-    """
-    Run backtest on-demand and store results in database.
-    
-    WARNING: Takes ~30-60 seconds. Only call once at startup or manually.
-    
-    Args:
-        start_date: Start date (YYYY-MM-DD)
-        end_date: End date (YYYY-MM-DD)
-    
-    Returns:
-        Success status and number of runs created
-    """
+import threading
+
+# Global state for background backtest
+backtest_status = {"running": False, "error": None, "runs_count": 0}
+
+def run_backtest_background(start_date: str, end_date: str):
+    """Run backtest in background thread."""
     try:
-        print(f"🚀 Running backtest: {start_date} to {end_date}")
-        
         import subprocess
         import sys
         
-        # Get absolute paths
+        backtest_status["running"] = True
+        backtest_status["error"] = None
+        
+        print(f"🚀 Background: Running backtest: {start_date} to {end_date}")
+        
         backend_dir = Path(__file__).parent.resolve()
         project_dir = backend_dir.parent.resolve()
         script_path = project_dir / "scripts" / "backtest_hourly_agent.py"
         
-        print(f"DEBUG: Project dir = {project_dir}")
-        print(f"DEBUG: Script path = {script_path}")
-        print(f"DEBUG: Script exists = {script_path.exists()}")
-        
-        if not script_path.exists():
-            return {"success": False, "error": f"Script not found at {script_path}"}
-        
-        # Run backtest script from project directory
-        # Increased timeout to 300s (5 min) because Render is slower
+        # Run backtest script
         result = subprocess.run(
             [sys.executable, str(script_path),
              "--start", start_date, "--end", end_date],
             cwd=str(project_dir),
             capture_output=True,
             text=True,
-            timeout=300  # 5 minutes
+            timeout=300
         )
-        
-        print(f"DEBUG: Return code = {result.returncode}")
-        print(f"DEBUG: Stdout = {result.stdout[-200:]}")
-        print(f"DEBUG: Stderr = {result.stderr[-200:]}")
         
         if result.returncode != 0:
             error_msg = result.stderr if result.stderr else result.stdout
-            print(f"❌ Backtest failed: {error_msg}")
-            return {
-                "success": False,
-                "error": error_msg[-500:] if error_msg else "Unknown error",
-                "returncode": result.returncode
-            }
-        
-        # Get the results
-        runs = db.get_runs_by_mode("backtest")
-        
-        print(f"✅ Backtest completed. Found {len(runs)} runs.")
-        
-        return {
-            "success": True,
-            "message": f"Backtest completed: {start_date} to {end_date}",
-            "runs_count": len(runs),
-            "runs": [{"agent_name": r["agent_name"], "return": r.get("total_return", 0)} for r in runs[:3]]
-        }
-    except subprocess.TimeoutExpired:
-        return {"success": False, "error": "Backtest timed out (>300 seconds / 5 minutes). Try a shorter date range."}
+            backtest_status["error"] = error_msg[-500:]
+            print(f"❌ Backtest failed: {error_msg[-200:]}")
+        else:
+            runs = db.get_runs_by_mode("backtest")
+            backtest_status["runs_count"] = len(runs)
+            print(f"✅ Backtest completed. Found {len(runs)} runs.")
     except Exception as e:
+        backtest_status["error"] = str(e)
         print(f"❌ Backtest exception: {e}")
-        import traceback
-        return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
+    finally:
+        backtest_status["running"] = False
+
+@app.post("/backtest/run")
+async def run_backtest_endpoint(start_date: str = "2026-04-15", end_date: str = "2026-04-23"):
+    """
+    Trigger backtest in background (non-blocking).
+    
+    Returns immediately with status. Check /backtest/status to monitor progress.
+    """
+    if backtest_status["running"]:
+        return {
+            "success": False,
+            "error": "Backtest already running. Please wait for it to complete."
+        }
+    
+    # Start backtest in background thread
+    thread = threading.Thread(
+        target=run_backtest_background,
+        args=(start_date, end_date),
+        daemon=True
+    )
+    thread.start()
+    
+    return {
+        "success": True,
+        "message": "Backtest started in background. Check /backtest/status for progress.",
+        "status_url": "/backtest/status"
+    }
+
+@app.get("/backtest/status")
+async def get_backtest_status():
+    """Get backtest status (running, error, or completed)."""
+    if backtest_status["running"]:
+        return {
+            "running": True,
+            "message": "Backtest is running... (may take 2-5 minutes)"
+        }
+    elif backtest_status["error"]:
+        return {
+            "running": False,
+            "error": backtest_status["error"],
+            "message": "Backtest failed"
+        }
+    elif backtest_status["runs_count"] > 0:
+        return {
+            "running": False,
+            "success": True,
+            "runs_count": backtest_status["runs_count"],
+            "message": "Backtest completed successfully"
+        }
+    else:
+        return {
+            "running": False,
+            "message": "No backtest has been run yet"
+        }
 
 
 # ============================================================================
