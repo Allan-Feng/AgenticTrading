@@ -50,12 +50,21 @@ class PaperTradingBaselineCalculator:
                 creds = json.load(f)
                 self.api_key = creds.get('api_key') or creds.get('apiKey')
                 self.secret_key = creds.get('secret_key') or creds.get('secretKey')
+        else:
+            # Credentials file not found
+            self.api_key = None
+            self.secret_key = None
+            print("⚠️ Warning: Alpaca credentials file not found at credentials/alpaca.json")
     
     def get_paper_account_date_range(self) -> Optional[tuple]:
         """
         Get date range from paper account portfolio history.
         Returns (start_date, end_date) as datetime objects.
         """
+        if not self.api_key or not self.secret_key:
+            print("⚠️ Alpaca credentials not configured - skipping paper baseline initialization")
+            return None
+        
         try:
             client = AlpacaPaperTradingClient(self.api_key, self.secret_key)
             history = client.get_portfolio_history(timeframe="1D")
