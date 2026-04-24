@@ -14,6 +14,7 @@ Same logic, different contexts.
 """
 
 import json
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
@@ -43,7 +44,20 @@ class BaselineGenerator:
         self._load_credentials()
     
     def _load_credentials(self):
-        """Load Alpaca credentials from file."""
+        """Load Alpaca credentials from environment variables or file."""
+        # Try environment variables first (for Render, Docker, etc.)
+        self.api_key = os.getenv('ALPACA_API_KEY')
+        self.secret_key = os.getenv('ALPACA_SECRET_KEY')
+        
+        if self.api_key and self.secret_key:
+            print("✅ Loaded Alpaca credentials from environment variables")
+            self.headers = {
+                "APCA-API-KEY-ID": self.api_key,
+                "APCA-API-SECRET-KEY": self.secret_key,
+            }
+            return
+        
+        # Fall back to credentials file (for local development)
         creds_path = Path(__file__).parent.parent / "credentials" / "alpaca.json"
         try:
             with open(creds_path, 'r') as f:
@@ -52,14 +66,16 @@ class BaselineGenerator:
                 self.secret_key = creds.get('secret_key')
                 
                 if not self.api_key or not self.secret_key:
-                    raise ValueError("Missing Alpaca credentials")
+                    raise ValueError("Missing Alpaca credentials in file")
                 
+                print(f"✅ Loaded Alpaca credentials from {creds_path}")
                 self.headers = {
                     "APCA-API-KEY-ID": self.api_key,
                     "APCA-API-SECRET-KEY": self.secret_key,
                 }
         except Exception as e:
-            print(f"❌ Failed to load credentials: {e}")
+            print(f"❌ Failed to load credentials from file: {e}")
+            print("   Set ALPACA_API_KEY and ALPACA_SECRET_KEY environment variables")
             sys.exit(1)
     
     def _fetch_bars_for_symbol(self, symbol: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
