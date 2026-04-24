@@ -5,6 +5,7 @@ Fetches live account data, positions, and trade history.
 
 import json
 import requests
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
@@ -55,7 +56,15 @@ class AlpacaPaperTradingClient:
         }
     
     def _load_from_credentials(self):
-        """Load credentials from credentials/alpaca.json"""
+        """Load credentials from environment variables or credentials file"""
+        # Try environment variables first (for Render, Docker, etc.)
+        self.api_key = os.getenv('ALPACA_API_KEY')
+        self.secret_key = os.getenv('ALPACA_SECRET_KEY')
+        
+        if self.api_key and self.secret_key:
+            return
+        
+        # Fall back to credentials file (for local development)
         creds_path = Path(__file__).parent.parent / "credentials" / "alpaca.json"
         
         if creds_path.exists():

@@ -5,6 +5,7 @@ Creates DJIA Index and Buy & Hold baselines for the paper account's date range.
 
 import json
 import requests
+import os
 from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
@@ -43,18 +44,33 @@ class PaperTradingBaselineCalculator:
         }
     
     def _load_credentials(self):
-        """Load credentials from file."""
+        """Load credentials from environment variables or file."""
+        # Try environment variables first (for Render, Docker, etc.)
+        self.api_key = os.getenv('ALPACA_API_KEY')
+        self.secret_key = os.getenv('ALPACA_SECRET_KEY')
+        
+        if self.api_key and self.secret_key:
+            print("✅ Loaded Alpaca credentials from environment variables")
+            return
+        
+        # Fall back to credentials file (for local development)
         creds_path = Path(__file__).parent.parent / "credentials" / "alpaca.json"
         if creds_path.exists():
-            with open(creds_path, 'r') as f:
-                creds = json.load(f)
-                self.api_key = creds.get('api_key') or creds.get('apiKey')
-                self.secret_key = creds.get('secret_key') or creds.get('secretKey')
+            try:
+                with open(creds_path, 'r') as f:
+                    creds = json.load(f)
+                    self.api_key = creds.get('api_key') or creds.get('apiKey')
+                    self.secret_key = creds.get('secret_key') or creds.get('secretKey')
+                    print("✅ Loaded Alpaca credentials from credentials/alpaca.json")
+            except Exception as e:
+                print(f"⚠️ Error loading credentials file: {e}")
+                self.api_key = None
+                self.secret_key = None
         else:
-            # Credentials file not found
+            # No credentials found anywhere
             self.api_key = None
             self.secret_key = None
-            print("⚠️ Warning: Alpaca credentials file not found at credentials/alpaca.json")
+            print("⚠️ Warning: Alpaca credentials not found in environment variables or credentials/alpaca.json")
     
     def get_paper_account_date_range(self) -> Optional[tuple]:
         """
