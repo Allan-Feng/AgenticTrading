@@ -288,7 +288,7 @@ async function triggerBacktest() {
     const originalText = btn.textContent;
     
     try {
-        btn.textContent = '⏳ Running backtest...';
+        btn.textContent = '⏳ Running backtest (may take 2-5 min)...';
         btn.disabled = true;
         
         console.log('🚀 Triggering backtest...');

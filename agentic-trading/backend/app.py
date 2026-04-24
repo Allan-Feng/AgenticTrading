@@ -174,7 +174,7 @@ async def health():
 
 
 @app.post("/backtest/run")
-async def run_backtest_endpoint(start_date: str = "2026-03-01", end_date: str = "2026-04-23"):
+async def run_backtest_endpoint(start_date: str = "2026-04-15", end_date: str = "2026-04-23"):
     """
     Run backtest on-demand and store results in database.
     
@@ -206,13 +206,14 @@ async def run_backtest_endpoint(start_date: str = "2026-03-01", end_date: str = 
             return {"success": False, "error": f"Script not found at {script_path}"}
         
         # Run backtest script from project directory
+        # Increased timeout to 300s (5 min) because Render is slower
         result = subprocess.run(
             [sys.executable, str(script_path),
              "--start", start_date, "--end", end_date],
             cwd=str(project_dir),
             capture_output=True,
             text=True,
-            timeout=120
+            timeout=300  # 5 minutes
         )
         
         print(f"DEBUG: Return code = {result.returncode}")
@@ -240,7 +241,7 @@ async def run_backtest_endpoint(start_date: str = "2026-03-01", end_date: str = 
             "runs": [{"agent_name": r["agent_name"], "return": r.get("total_return", 0)} for r in runs[:3]]
         }
     except subprocess.TimeoutExpired:
-        return {"success": False, "error": "Backtest timed out (>120 seconds)"}
+        return {"success": False, "error": "Backtest timed out (>300 seconds / 5 minutes). Try a shorter date range."}
     except Exception as e:
         print(f"❌ Backtest exception: {e}")
         import traceback
