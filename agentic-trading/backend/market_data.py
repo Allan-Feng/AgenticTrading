@@ -82,14 +82,16 @@ class AlpacaMarketData:
                 # Extract quote from response
                 if "quote" in data:
                     quote = data["quote"]
-                    price = quote.get("ap") or quote.get("bp") or quote.get("p", 0)  # ask, bid, or last price
                     
-                    # Debug: Log the quote data
-                    print(f"DEBUG {symbol}: quote keys = {list(quote.keys())}")
-                    print(f"DEBUG {symbol}: pc={quote.get('pc')}, price={price}")
+                    # Current price: ask price (ap) is most reliable for real-time
+                    price = quote.get("ap") or quote.get("bp") or quote.get("p", 0)
                     
-                    # Try to get previous close for comparison
-                    prev_close = self._get_previous_close(symbol)
+                    # Previous close: use 'c' field (previous day's close from Alpaca quote)
+                    prev_close = quote.get("c")
+                    
+                    if not prev_close or prev_close <= 0:
+                        # Fallback if 'c' not available
+                        prev_close = self._get_previous_close(symbol)
                     
                     if prev_close and prev_close > 0:
                         change = price - prev_close
@@ -97,8 +99,6 @@ class AlpacaMarketData:
                     else:
                         change = 0
                         change_percent = 0
-                    
-                    print(f"DEBUG {symbol}: prev_close={prev_close}, change_percent={change_percent}")
                     
                     return {
                         "symbol": symbol,
