@@ -84,6 +84,10 @@ class AlpacaMarketData:
                     quote = data["quote"]
                     price = quote.get("ap") or quote.get("bp") or quote.get("p", 0)  # ask, bid, or last price
                     
+                    # Debug: Log the quote data
+                    print(f"DEBUG {symbol}: quote keys = {list(quote.keys())}")
+                    print(f"DEBUG {symbol}: pc={quote.get('pc')}, price={price}")
+                    
                     # Try to get previous close for comparison
                     prev_close = self._get_previous_close(symbol)
                     
@@ -93,6 +97,8 @@ class AlpacaMarketData:
                     else:
                         change = 0
                         change_percent = 0
+                    
+                    print(f"DEBUG {symbol}: prev_close={prev_close}, change_percent={change_percent}")
                     
                     return {
                         "symbol": symbol,
