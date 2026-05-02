@@ -13,198 +13,357 @@
         <div class="header-left">
             <div class="logo">📊</div>
             <div class="title-section">
-                <h1>Agentic Trading Lab</h1>
-                <p>Compare LLM agents on the same market stream.</p>
+                <div class="title-with-badge">
+                    <h1>Agentic Trading Lab</h1>
+                    <span class="beta-badge">BETA</span>
+                </div>
+                <p>Compare LLM agents and baselines on the same market</p>
+            </div>
+        </div>
+        <div class="header-center">
+            <div class="market-info">
+                <span class="info-label">Market:</span>
+                <span class="info-value">US Equities</span>
+                <span class="info-label">Data as of:</span>
+                <span class="info-value" id="dataTimestamp">04/23 16:00 ET</span>
             </div>
         </div>
         <div class="header-right">
             <div class="mode-toggle">
                 <button class="mode-btn active" data-mode="backtest">Backtest</button>
-                <button class="mode-btn" data-mode="paper">Paper ▼</button>
-                <button class="mode-btn" data-mode="contest">🏆 Contest</button>
+                <button class="mode-btn" data-mode="paper">📄 Paper Trading</button>
+                <button class="mode-btn" data-mode="contest">🏆 Leaderboard</button>
             </div>
-            <div class="search-box">
-                <input type="text" placeholder="Search team..." id="searchInput">
-                <span>🔍</span>
+            <div class="icon-buttons">
+                <button class="icon-btn" title="Help">❓</button>
+                <button class="icon-btn" title="Notifications">🔔</button>
+                <button class="icon-btn" title="Settings">⚙️</button>
             </div>
-            <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">
-                <span class="theme-icon">🌙</span>
-            </button>
         </div>
     </header>
 
     <!-- Live Ticker -->
     <div class="ticker-bar" id="tickerBar">
-        <!-- Populated by JavaScript from /ticker endpoint -->
-        <div class="ticker-placeholder">Loading market data...</div>
+        <div class="ticker-item">
+            <span class="symbol">SPY</span>
+            <span class="price">512.43</span>
+            <span class="change positive">+1.20%</span>
+            <svg class="ticker-chart" viewBox="0 0 30 12"><path d="M0,8 L5,6 L10,7 L15,4 L20,5 L25,3 L30,5" stroke="currentColor" fill="none" stroke-width="1"/></svg>
+        </div>
+        <div class="ticker-item">
+            <span class="symbol">QQQ</span>
+            <span class="price">438.21</span>
+            <span class="change positive">+1.35%</span>
+            <svg class="ticker-chart" viewBox="0 0 30 12"><path d="M0,8 L5,6 L10,7 L15,4 L20,5 L25,3 L30,5" stroke="currentColor" fill="none" stroke-width="1"/></svg>
+        </div>
+        <div class="ticker-item">
+            <span class="symbol">AAPL</span>
+            <span class="price">189.50</span>
+            <span class="change positive">+1.20%</span>
+            <svg class="ticker-chart" viewBox="0 0 30 12"><path d="M0,8 L5,6 L10,7 L15,4 L20,5 L25,3 L30,5" stroke="currentColor" fill="none" stroke-width="1"/></svg>
+        </div>
+        <div class="ticker-item">
+            <span class="symbol">MSFT</span>
+            <span class="price">425.10</span>
+            <span class="change positive">+0.80%</span>
+            <svg class="ticker-chart" viewBox="0 0 30 12"><path d="M0,8 L5,6 L10,7 L15,4 L20,5 L25,3 L30,5" stroke="currentColor" fill="none" stroke-width="1"/></svg>
+        </div>
+        <div class="ticker-item">
+            <span class="symbol">NVDA</span>
+            <span class="price">875.20</span>
+            <span class="change positive">+2.10%</span>
+            <svg class="ticker-chart" viewBox="0 0 30 12"><path d="M0,8 L5,6 L10,7 L15,4 L20,5 L25,3 L30,5" stroke="currentColor" fill="none" stroke-width="1"/></svg>
+        </div>
+        <div class="ticker-item">
+            <span class="symbol">BTC</span>
+            <span class="price">67,500</span>
+            <span class="change positive">+3.20%</span>
+            <svg class="ticker-chart" viewBox="0 0 30 12"><path d="M0,8 L5,6 L10,7 L15,4 L20,5 L25,3 L30,5" stroke="currentColor" fill="none" stroke-width="1"/></svg>
+        </div>
+        <div class="ticker-spacer">
+            <span class="ticker-dropdown">Market ▼</span>
+            <span class="ticker-filter">US Equities</span>
+        </div>
     </div>
 
-    <!-- Main Content -->
+    <!-- Main Content: 3-Column Layout -->
     <div class="main-container">
-        <!-- Left Column (Chart + Decisions) -->
-        <div class="left-column">
-            <!-- Equity Curves Section -->
-            <section class="section equity-section">
+        <!-- Left Panel: Market Setup & Agent Config -->
+        <aside class="left-panel">
+            <!-- Market Setup Section -->
+            <section class="control-section">
+                <h3 class="control-title">MARKET SETUP</h3>
+                
+                <div class="control-group">
+                    <label>Time Range</label>
+                    <div class="date-range-inputs">
+                        <input type="date" id="startDate" value="2026-04-15" class="date-input">
+                        <span class="date-separator">→</span>
+                        <input type="date" id="endDate" value="2026-04-23" class="date-input">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Companies / Assets</label>
+                    <div class="checkbox-list">
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked> <span>AAPL</span> <span class="company-name">Apple Inc.</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked> <span>MSFT</span> <span class="company-name">Microsoft Corp.</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox"> <span>GOOGL</span> <span class="company-name">Alphabet Inc.</span>
+                        </label>
+                    </div>
+                    <button class="add-company-btn">+ Add Company / Asset</button>
+                </div>
+            </section>
+
+            <!-- Agent Config Section -->
+            <section class="control-section">
+                <h3 class="control-title">AGENT CONFIG</h3>
+                
+                <div class="control-group">
+                    <label>Agent Type</label>
+                    <select class="control-select">
+                        <option>Momentum Agent</option>
+                        <option>Mean Reversion</option>
+                        <option>Custom</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Risk Aversion</label>
+                    <div class="slider-container">
+                        <input type="range" min="0" max="100" value="60" class="slider">
+                        <div class="slider-labels">
+                            <span>Conservative</span>
+                            <span class="slider-value">0.60</span>
+                            <span>Aggressive</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Trades per Day (Target)</label>
+                    <div class="slider-container">
+                        <input type="range" min="0" max="10" value="3.2" step="0.1" class="slider">
+                        <div class="slider-labels">
+                            <span>0</span>
+                            <span class="slider-value">3.2</span>
+                            <span>10</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Execution & Costs Section -->
+            <section class="control-section">
+                <h3 class="control-title">EXECUTION & COSTS</h3>
+                
+                <div class="control-group">
+                    <label>Slippage (%)</label>
+                    <div class="slider-container">
+                        <input type="range" min="0" max="1" value="0.1" step="0.01" class="slider">
+                        <div class="slider-labels">
+                            <span>0%</span>
+                            <span class="slider-value">0.10%</span>
+                            <span>1%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Transaction Cost (%)</label>
+                    <div class="slider-container">
+                        <input type="range" min="0" max="1" value="0.1" step="0.01" class="slider">
+                        <div class="slider-labels">
+                            <span>0%</span>
+                            <span class="slider-value">0.10%</span>
+                            <span>1%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Max Position Size (%)</label>
+                    <div class="slider-container">
+                        <input type="range" min="0" max="100" value="50" class="slider">
+                        <div class="slider-labels">
+                            <span>0%</span>
+                            <span class="slider-value">50%</span>
+                            <span>100%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="reset-defaults-btn">⟲ Reset to Defaults</button>
+            </section>
+
+        </aside>
+
+        <!-- Center Panel: Charts & Decision Log -->
+        <section class="center-panel">
+            <!-- Trading Performance Section -->
+            <div class="section-card">
                 <div class="section-header">
-                    <div>
-                        <h2 id="equityTitle">Agent Equity Curves</h2>
-                        <span id="equitySubtitle" class="chart-subtitle-inline">Comparing agent performance</span>
+                    <div class="section-title-group">
+                        <h2>📈 TRADING PERFORMANCE</h2>
                     </div>
-                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <label for="backtestStartDate" style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">From:</label>
-                            <input type="date" id="backtestStartDate" value="2026-04-15" style="padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); font-size: 12px;">
-                        </div>
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <label for="backtestEndDate" style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">To:</label>
-                            <input type="date" id="backtestEndDate" value="2026-04-23" style="padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); font-size: 12px;">
-                        </div>
-                        <button id="runBacktestBtn" class="tf-btn" style="background: #4a90e2; color: white; padding: 8px 16px; cursor: pointer; font-weight: 600;">▶ Run Backtest</button>
-                        <div class="timeframe-toggle" id="timeframeToggle">
-                            <button class="tf-btn active">1D</button>
-                            <button class="tf-btn">1W</button>
-                            <button class="tf-btn">1M</button>
-                        </div>
+                    <div class="chart-controls">
+                        <button class="run-backtest-btn">▶ Run Backtest</button>
+                        <button class="time-btn active">1D</button>
+                        <button class="time-btn">1W</button>
+                        <button class="time-btn">1M</button>
+                        <button class="time-btn">ALL</button>
                     </div>
                 </div>
-                <div class="chart-subtitle" id="chartSubtitle">Total Account Value</div>
+
+                <!-- Chart with integrated legend -->
                 <div class="chart-container">
-                    <canvas id="equityChart"></canvas>
+                    <canvas id="performanceChart"></canvas>
                 </div>
-                <!-- Contest Metrics Table (hidden by default) -->
-                <div id="contestMetricsTable" class="contest-metrics" style="display:none; margin-top: 20px;">
-                    <table class="metrics-table">
-                        <thead>
-                            <tr>
-                                <th>Team</th>
-                                <th>CR (%)</th>
-                                <th>SR</th>
-                                <th>MD (%)</th>
-                                <th>DV (%)</th>
-                                <th>AV (%)</th>
-                                <th>Final Equity</th>
-                            </tr>
-                        </thead>
-                        <tbody id="contestMetricsBody">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
 
-            <!-- Model Decisions & Activity Combined Section -->
-            <section class="section decisions-section">
-                <h2 id="decisionsTitle">Model Activity & Decisions</h2>
-                <div class="activity-decisions-combined">
-                    <div class="decisions-grid" id="decisionsGrid">
-                        <div class="decision-card deepseek">
-                            <div class="agent-name">DeepSeek</div>
-                            <div class="decision-action">Action: <span class="buy">BUY NVDA</span></div>
-                            <div class="decision-confidence">Confidence: <strong>0.78</strong></div>
-                        </div>
-                        <div class="decision-card claude">
-                            <div class="agent-name">Claude</div>
-                            <div class="decision-action">Action: <span class="hold">HOLD AAPL</span></div>
-                            <div class="decision-confidence">Confidence: <strong>0.66</strong></div>
-                        </div>
-                        <div class="decision-card gpt">
-                            <div class="agent-name">GPT</div>
-                            <div class="decision-action">Action: <span class="sell">SELL TSLA</span></div>
-                            <div class="decision-confidence">Confidence: <strong>0.61</strong></div>
-                        </div>
-                    </div>
-                    <div class="activity-log">
-                        <h3>Recent Activity</h3>
-                        <div class="activity-item">
-                            <div class="time">15:27</div>
-                            <div class="agent">DeepSeek</div>
-                            <div class="action buy">BUY NVDA</div>
-                            <div class="detail">qty 12 @ 118.10</div>
-                        </div>
-                        <div class="activity-item">
-                            <div class="time">15:11</div>
-                            <div class="agent">Claude</div>
-                            <div class="action hold">HOLD AAPL</div>
-                            <div class="detail">qty 0 —</div>
-                        </div>
-                        <div class="activity-item">
-                            <div class="time">14:58</div>
-                            <div class="agent">GPT</div>
-                            <div class="action sell">SELL TSLA</div>
-                            <div class="detail">qty 5 @ 171.02</div>
-                        </div>
-                        <div class="activity-item">
-                            <div class="time">14:41</div>
-                            <div class="agent">DeepSeek</div>
-                            <div class="action buy">BUY BTC</div>
-                            <div class="detail">qty 0.02 @ 67,980</div>
-                        </div>
+            </div>
+
+            <!-- Decision Log Section -->
+            <div class="section-card">
+                <div class="section-header">
+                    <h2>📋 DECISION LOG</h2>
+                    <div class="log-controls">
+                        <select class="filter-select">
+                            <option>All Actions</option>
+                            <option>Buy Only</option>
+                            <option>Sell Only</option>
+                            <option>Hold Only</option>
+                        </select>
+                        <button class="filter-btn">🔽</button>
                     </div>
                 </div>
-            </section>
-        </div>
 
-        <!-- Right Sidebar -->
-        <aside class="right-sidebar">
-            <!-- Paper Trading Account Info (visible only in paper mode) -->
-            <section class="section paper-account-section" id="paperAccountSection" style="display:none;">
-                <h2>📊 Live Account</h2>
-                <div class="account-metrics" id="paperAccountInfo">
-                    <div class="account-metric">
-                        <div class="metric-value">$100,000</div>
-                        <div class="metric-label">Account Equity</div>
-                    </div>
-                    <div class="account-metric">
-                        <div class="metric-value">$50,000</div>
-                        <div class="metric-label">Cash Available</div>
-                    </div>
-                    <div class="account-metric">
-                        <div class="metric-value">$50,000</div>
-                        <div class="metric-label">Buying Power</div>
-                    </div>
+                <table class="decision-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Agent</th>
+                            <th>Action</th>
+                            <th>Company / Asset</th>
+                            <th>Price</th>
+                            <th>Reasoning (Agent Rationale)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>14:35:21</td>
+                            <td>Claude</td>
+                            <td><span class="action-buy">BUY</span></td>
+                            <td>AAPL</td>
+                            <td>$150.25</td>
+                            <td>Strong momentum, earnings beat, volume surge...</td>
+                        </tr>
+                        <tr>
+                            <td>14:42:10</td>
+                            <td>DeepSeek</td>
+                            <td><span class="action-sell">SELL</span></td>
+                            <td>MSFT</td>
+                            <td>$380.50</td>
+                            <td>Overbought signal, short-term reversal expected...</td>
+                        </tr>
+                        <tr>
+                            <td>14:55:32</td>
+                            <td>Claude</td>
+                            <td><span class="action-buy">BUY</span></td>
+                            <td>NVDA</td>
+                            <td>$875.10</td>
+                            <td>Breakout confirmed, trend continuation...</td>
+                        </tr>
+                        <tr>
+                            <td>15:03:18</td>
+                            <td>Claude</td>
+                            <td><span class="action-hold">HOLD</span></td>
+                            <td>GOOGL</td>
+                            <td>$162.45</td>
+                            <td>Consolidation phase, waiting for clearer signal...</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <button class="view-all-btn">View Full Decision Log →</button>
+            </div>
+        </section>
+
+        <!-- Right Panel: Metrics & Performance Drivers -->
+        <aside class="right-panel">
+            <!-- Trading Performance Summary -->
+            <div class="section-card compact">
+                <h3 class="section-title">📊 TRADING PERFORMANCE SUMMARY</h3>
+                
+                <div class="metric-row">
+                    <span class="metric-label">Total Return</span>
+                    <span class="metric-value positive">+12.45%</span>
                 </div>
-            </section>
-
-            <!-- Paper Trading Open Positions -->
-            <section class="section paper-positions-section" id="paperPositionsSection" style="display:none;">
-                <h2>📈 Open Positions</h2>
-                <div class="positions-list" id="paperPositions">
-                    <div class="no-positions">No open positions</div>
+                <div class="metric-row">
+                    <span class="metric-label">Sharpe Ratio</span>
+                    <span class="metric-value">0.85</span>
                 </div>
-            </section>
-
-            <!-- Paper Trading Recent Trades -->
-            <section class="section paper-trades-section" id="paperTradesSection" style="display:none;">
-                <h2>⚡ Recent Trades</h2>
-                <div class="trades-list" id="paperTrades">
-                    <div class="no-trades">No recent trades</div>
+                <div class="metric-row">
+                    <span class="metric-label">Max Drawdown</span>
+                    <span class="metric-value negative">-8.20%</span>
                 </div>
-            </section>
-
-            <!-- Leaderboard -->
-            <section class="section leaderboard-section" id="leaderboardSection">
-                <h2 id="leaderboardTitle">Arena Leaderboard</h2>
-                <div class="leaderboard-list" id="leaderboardList">
-                    <div class="leaderboard-item rank-1">
-                        <div class="rank">1.</div>
-                        <div class="name">DeepSeek</div>
-                        <div class="return">+2.62%</div>
-                    </div>
-                    <div class="leaderboard-item rank-2">
-                        <div class="rank">2.</div>
-                        <div class="name">Claude</div>
-                        <div class="return">+2.24%</div>
-                    </div>
-                    <div class="leaderboard-item rank-3">
-                        <div class="rank">3.</div>
-                        <div class="name">GPT</div>
-                        <div class="return">+0.91%</div>
-                    </div>
+                <div class="metric-row">
+                    <span class="metric-label">Win Rate</span>
+                    <span class="metric-value">54%</span>
                 </div>
-                <div class="sort-options" id="sortOptions">Sort by: PnL | Sharpe | MDD</div>
-                <button class="view-full-btn">View Full Leaderboard</button>
-            </section>
+                <div class="metric-row">
+                    <span class="metric-label">Trades</span>
+                    <span class="metric-value">128</span>
+                </div>
+                
+                <button class="view-more-btn">View More Metrics →</button>
+            </div>
 
+            <!-- Performance Drivers -->
+            <div class="section-card compact">
+                <h3 class="section-title">🎯 PERFORMANCE DRIVERS</h3>
+                
+                <div class="driver-item positive">
+                    <span class="driver-icon">▲</span>
+                    <span class="driver-text">Lower slippage improved execution quality.</span>
+                </div>
+                <div class="driver-item positive">
+                    <span class="driver-icon">▲</span>
+                    <span class="driver-text">Higher transaction cost reduced returns.</span>
+                </div>
+                <div class="driver-item positive">
+                    <span class="driver-icon">▲</span>
+                    <span class="driver-text">Balanced risk level helped stability.</span>
+                </div>
+                
+                <button class="view-details-btn">View Details →</button>
+            </div>
+
+            <!-- Quick Scenarios -->
+            <div class="section-card compact">
+                <h3 class="section-title">⚡ QUICK SCENARIOS</h3>
+                
+                <button class="scenario-btn">
+                    <span class="scenario-icon">💰</span>
+                    <span>Low Cost</span>
+                </button>
+                <button class="scenario-btn">
+                    <span class="scenario-icon">🚀</span>
+                    <span>High Momentum</span>
+                </button>
+                <button class="scenario-btn">
+                    <span class="scenario-icon">🛡️</span>
+                    <span>Conservative</span>
+                </button>
+                <button class="scenario-btn">
+                    <span class="scenario-icon">⚙️</span>
+                    <span>Custom Scenario</span>
+                </button>
+            </div>
         </aside>
     </div>
 
