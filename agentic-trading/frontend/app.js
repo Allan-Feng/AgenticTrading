@@ -467,7 +467,19 @@ function switchMode(mode) {
     document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
     document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
     
-    loadData();
+    // Show/hide appropriate views
+    const backtestView = document.querySelector('.main-container');
+    const paperView = document.getElementById('paperTradingView');
+    
+    if (mode === 'paper') {
+        if (backtestView) backtestView.style.display = 'none';
+        if (paperView) paperView.style.display = 'block';
+        loadPaperTradingData();
+    } else {
+        if (backtestView) backtestView.style.display = 'grid';
+        if (paperView) paperView.style.display = 'none';
+        loadData();
+    }
 }
 
 /**
@@ -734,6 +746,304 @@ function formatCurrency(value) {
  */
 function formatPercent(value) {
     return (value * 100).toFixed(2) + '%';
+}
+
+/**
+ * ============================================================================
+ * PAPER TRADING MODE
+ * ============================================================================
+ */
+
+/**
+ * Load all paper trading data in parallel
+ */
+async function loadPaperTradingData() {
+    console.log('📈 Loading paper trading data...');
+    
+    try {
+        // Fetch all data in parallel
+        const [accountRes, positionsRes, historyRes, tradesRes] = await Promise.all([
+            fetch(`${API_BASE}/paper/account?t=${Date.now()}`),
+            fetch(`${API_BASE}/paper/positions?t=${Date.now()}`),
+            fetch(`${API_BASE}/paper/portfolio-history?t=${Date.now()}`),
+            fetch(`${API_BASE}/paper/trades?t=${Date.now()}`)
+        ]);
+        
+        // Parse responses
+        const accountData = accountRes.ok ? await accountRes.json() : null;
+        const positionsData = positionsRes.ok ? await positionsRes.json() : null;
+        const historyData = historyRes.ok ? await historyRes.json() : null;
+        const tradesData = tradesRes.ok ? await tradesRes.json() : null;
+        
+        console.log('✅ All paper trading data loaded');
+        console.log('  Account:', accountData?.account);
+        console.log('  Positions:', positionsData?.positions?.length || 0);
+        console.log('  History points:', historyData?.history?.length || 0);
+        console.log('  Recent trades:', tradesData?.trades?.length || 0);
+        
+        // Display account metrics
+        if (accountData?.success && accountData?.account) {
+            displayAccountMetrics(accountData.account);
+        }
+        
+        // Display positions
+        if (positionsData?.success && positionsData?.positions) {
+            displayPositions(positionsData.positions);
+        }
+        
+        // Display equity curve
+        if (historyData?.success && historyData?.history) {
+            displayEquityCurve(historyData.history);
+        }
+        
+        // Display trades
+        if (tradesData?.success && tradesData?.trades) {
+            displayTrades(tradesData.trades);
+        }
+        
+    } catch (error) {
+        console.error('Error loading paper trading data:', error);
+        displayPaperError('Failed to load paper trading data: ' + error.message);
+    }
+}
+
+/**
+ * Display account metrics
+ */
+function displayAccountMetrics(account) {
+    console.log('Displaying account metrics:', account);
+    
+    // Portfolio Value
+    const portfolioEl = document.getElementById('portfolioValue');
+    if (portfolioEl && account.equity) {
+        portfolioEl.textContent = formatCurrency(account.equity);
+    }
+    
+    // Cash
+    const cashEl = document.getElementById('cashValue');
+    if (cashEl && account.cash) {
+        cashEl.textContent = formatCurrency(account.cash);
+    }
+    
+    // Buying Power
+    const buyingPowerEl = document.getElementById('buyingPowerValue');
+    if (buyingPowerEl && account.buying_power) {
+        buyingPowerEl.textContent = formatCurrency(account.buying_power);
+    }
+    
+    // Day P&L
+    const dayPnLEl = document.getElementById('dayPnL');
+    if (dayPnLEl && account.day_pnl !== undefined) {
+        const dayPnL = parseFloat(account.day_pnl) || 0;
+        const dayPnLPercent = account.equity ? (dayPnL / account.equity) * 100 : 0;
+        dayPnLEl.textContent = (dayPnL >= 0 ? '+' : '') + formatCurrency(dayPnL);
+        dayPnLEl.className = 'paper-value ' + (dayPnL >= 0 ? 'positive' : 'negative');
+    }
+}
+
+/**
+ * Display positions list
+ */
+function displayPositions(positions) {
+    console.log('Displaying positions:', positions.length);
+    
+    const positionsList = document.getElementById('positionsList');
+    if (!positionsList) return;
+    
+    if (!positions || positions.length === 0) {
+        positionsList.innerHTML = '<div class="loading">No open positions</div>';
+        return;
+    }
+    
+    positionsList.innerHTML = positions.map(pos => {
+        const currentValue = (pos.current_price || 0) * pos.qty;
+        const unrealizedPnL = parseFloat(pos.unrealized_pl || 0);
+        const unrealizedPnLPercent = parseFloat(pos.unrealized_plpc || 0);
+        const isPositive = unrealizedPnL >= 0;
+        
+        return `
+            <div class="position-item">
+                <div style="flex: 1;">
+                    <div class="position-symbol">${pos.symbol}</div>
+                    <div class="position-qty">${Math.abs(pos.qty)} shares @ $${(pos.current_price || 0).toFixed(2)}</div>
+                </div>
+                <div style="text-align: right;">
+                    <div class="position-pnl ${isPositive ? 'positive' : 'negative'}">
+                        ${isPositive ? '+' : ''}$${unrealizedPnL.toFixed(2)}
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted);">
+                        ${isPositive ? '+' : ''}${unrealizedPnLPercent.toFixed(2)}%
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Display equity curve chart
+ */
+function displayEquityCurve(history) {
+    console.log('Displaying equity curve with', history.length, 'points');
+    
+    const canvas = document.getElementById('paperEquityChart');
+    if (!canvas) return;
+    
+    // Destroy existing chart if any
+    if (window.paperChartInstance) {
+        window.paperChartInstance.destroy();
+    }
+    
+    const ctx = canvas.getContext('2d');
+    
+    // Extract timestamps and equity values
+    const timestamps = history.map(h => {
+        const date = new Date(h.timestamp);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+    
+    const equityValues = history.map(h => parseFloat(h.equity) || 0);
+    
+    // Create chart
+    window.paperChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: timestamps,
+            datasets: [{
+                label: 'Portfolio Equity',
+                data: equityValues,
+                borderColor: '#4FC3F7',
+                backgroundColor: 'rgba(79, 195, 247, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#4FC3F7'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        color: 'var(--text-primary)',
+                        usePointStyle: true,
+                        padding: 15,
+                        font: { size: 12, weight: '600' }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#4FC3F7',
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        label: (context) => {
+                            return 'Equity: ' + formatCurrency(context.parsed.y);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        color: 'var(--text-muted)',
+                        font: { size: 11 },
+                        callback: (value) => formatCurrency(value)
+                    },
+                    grid: {
+                        color: 'var(--grid-color)',
+                        drawBorder: false
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: 'var(--text-muted)',
+                        font: { size: 11 },
+                        maxRotation: 45,
+                        minRotation: 0
+                    },
+                    grid: {
+                        display: false,
+                        drawBorder: false
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Display recent trades
+ */
+function displayTrades(trades) {
+    console.log('Displaying trades:', trades.length);
+    
+    const tradesList = document.getElementById('tradesList');
+    if (!tradesList) return;
+    
+    if (!trades || trades.length === 0) {
+        tradesList.innerHTML = '<div class="loading">No recent trades</div>';
+        return;
+    }
+    
+    // Show latest 20 trades
+    const recentTrades = trades.slice(0, 20);
+    
+    tradesList.innerHTML = recentTrades.map(trade => {
+        const date = new Date(trade.timestamp);
+        const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        const side = trade.side.toLowerCase();
+        
+        return `
+            <div class="trade-item">
+                <div style="flex: 1;">
+                    <div class="trade-symbol">${trade.symbol}</div>
+                    <div class="trade-qty">${Math.abs(trade.quantity)} @ $${parseFloat(trade.price).toFixed(2)}</div>
+                </div>
+                <div style="text-align: right;">
+                    <div class="trade-side ${side}">${side.toUpperCase()}</div>
+                    <div class="trade-time">${time}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Refresh paper trading data
+ */
+async function refreshPaperData() {
+    const btn = document.querySelector('.paper-refresh-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Refreshing...';
+    }
+    
+    await loadPaperTradingData();
+    
+    if (btn) {
+        btn.disabled = false;
+        btn.textContent = '🔄 Refresh';
+    }
+}
+
+/**
+ * Display error message in paper trading view
+ */
+function displayPaperError(message) {
+    console.error('Paper trading error:', message);
+    
+    const positionsList = document.getElementById('positionsList');
+    if (positionsList) {
+        positionsList.innerHTML = `<div class="loading" style="color: var(--danger-color);">Error: ${message}</div>`;
+    }
 }
 
 console.log('Frontend loaded - connecting to API at ' + API_BASE);

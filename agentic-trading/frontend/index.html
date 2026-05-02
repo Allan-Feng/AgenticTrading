@@ -333,6 +333,62 @@
         </aside>
     </div>
 
+    <!-- Paper Trading View (Hidden by default, shown when Paper tab selected) -->
+    <div id="paperTradingView" class="paper-trading-view" style="display: none;">
+        <div class="paper-container">
+            <!-- Left Panel: Account Summary -->
+            <aside class="paper-left-panel">
+                <div class="paper-card">
+                    <h3>ACCOUNT SUMMARY</h3>
+                    <div class="paper-metric">
+                        <span class="paper-label">Portfolio Value</span>
+                        <span class="paper-value" id="portfolioValue">--</span>
+                    </div>
+                    <div class="paper-metric">
+                        <span class="paper-label">Cash Available</span>
+                        <span class="paper-value" id="cashValue">--</span>
+                    </div>
+                    <div class="paper-metric">
+                        <span class="paper-label">Buying Power</span>
+                        <span class="paper-value" id="buyingPowerValue">--</span>
+                    </div>
+                    <div class="paper-metric">
+                        <span class="paper-label">Day P&L</span>
+                        <span class="paper-value" id="dayPnL">--</span>
+                    </div>
+                    <button class="paper-refresh-btn" onclick="refreshPaperData()">🔄 Refresh</button>
+                </div>
+
+                <div class="paper-card">
+                    <h3>OPEN POSITIONS</h3>
+                    <div id="positionsList" class="positions-list">
+                        <div class="loading">Loading positions...</div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center Panel: Equity Curve -->
+            <section class="paper-center-panel">
+                <div class="paper-card">
+                    <h3>PORTFOLIO EQUITY CURVE</h3>
+                    <div class="chart-container">
+                        <canvas id="paperEquityChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Recent Trades -->
+            <aside class="paper-right-panel">
+                <div class="paper-card">
+                    <h3>RECENT TRADES</h3>
+                    <div id="tradesList" class="trades-list">
+                        <div class="loading">Loading trades...</div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>
