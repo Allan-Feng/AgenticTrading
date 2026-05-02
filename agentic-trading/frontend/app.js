@@ -641,6 +641,22 @@ function initializeCharts() {
                         padding: 12,
                         displayColors: true,
                         callbacks: {
+                            title: function(context) {
+                                if (context.length > 0) {
+                                    const dataIndex = context[0].dataIndex;
+                                    const timestamp = timestamps[dataIndex];
+                                    try {
+                                        const date = new Date(timestamp);
+                                        const month = date.toLocaleString('en-US', { month: 'short' });
+                                        const day = date.getDate();
+                                        const hour = String(date.getHours()).padStart(2, '0');
+                                        return `${month} ${day} ${hour}:00`;
+                                    } catch (e) {
+                                        return timestamp;
+                                    }
+                                }
+                                return '';
+                            },
                             label: function(context) {
                                 const value = context.parsed.y;
                                 return context.dataset.label + ': $' + value.toFixed(0);
