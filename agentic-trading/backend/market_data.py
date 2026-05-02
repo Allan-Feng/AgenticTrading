@@ -154,6 +154,11 @@ class AlpacaMarketData:
         Get previous day's close price from historical daily bars.
         
         Returns the close price (field 'c') from the most recent completed trading day.
+        
+        Strategy:
+        1. Try IEX feed (free tier has access)
+        2. If IEX fails, try SIP with delayed end time (15+ mins ago)
+        3. If both fail, return None
         """
         try:
             from datetime import datetime, timedelta
@@ -162,59 +167,73 @@ class AlpacaMarketData:
             end_date = datetime.now().strftime("%Y-%m-%d")
             start_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
             
-            # Alpaca bars endpoint with correct timeframe format
-            url = f"{self.data_api_url}/v2/stocks/{symbol}/bars?timeframe=1Day&start={start_date}&end={end_date}&limit=5"
+            # ===== ATTEMPT 1: Try IEX feed (free tier) =====
+            url_iex = f"{self.data_api_url}/v2/stocks/{symbol}/bars?timeframe=1Day&start={start_date}&end={end_date}&limit=5&feed=iex"
             
-            response = requests.get(url, headers=self.headers, timeout=5)
-            
-            print(f"DEBUG {symbol}: Fetching bars from {url}")
+            response = requests.get(url_iex, headers=self.headers, timeout=5)
             
             if response.status_code == 200:
                 data = response.json()
-                
-                # Get all bars and sort by timestamp
                 if "bars" in data and len(data["bars"]) > 0:
                     bars = data["bars"]
                     
                     # Sort by timestamp descending (most recent first)
                     bars_sorted = sorted(bars, key=lambda x: x.get("t", ""), reverse=True)
                     
-                    # Get the most recent bar (could be today or yesterday depending on market hours)
-                    # The 'c' field is the close price for that day
-                    if len(bars_sorted) > 0:
-                        most_recent_close = float(bars_sorted[0].get("c", 0))
-                        
-                        # If current time is after market close (4 PM ET), use today's bar
-                        # Otherwise use yesterday's bar (second most recent)
-                        if len(bars_sorted) > 1:
-                            # Use the bar before the most recent one as "previous close"
-                            # (assuming most recent might be today's incomplete bar)
-                            try:
-                                prev_close = float(bars_sorted[1].get("c", 0))
-                                print(f"DEBUG {symbol}: previous_close={prev_close} (from 2nd most recent bar)")
-                                return prev_close if prev_close > 0 else None
-                            except (ValueError, TypeError) as e:
-                                print(f"DEBUG {symbol}: Could not convert close price: {e}")
-                                return None
-                        else:
-                            try:
-                                print(f"DEBUG {symbol}: previous_close={most_recent_close} (only one bar available)")
-                                return most_recent_close if most_recent_close > 0 else None
-                            except (ValueError, TypeError) as e:
-                                print(f"DEBUG {symbol}: Could not convert close price: {e}")
-                                return None
-            else:
-                error_msg = response.text[:300] if response.text else "No response"
-                print(f"Warning: Could not fetch bars for {symbol}: {response.status_code}")
-                if "subscription does not permit" in response.text.lower():
-                    print(f"  (Subscription limitation - historical bar data not available)")
-                print(f"  Response: {error_msg}")
-                # Return None - will display "--" in UI
-                return None
+                    if len(bars_sorted) > 1:
+                        # Use 2nd most recent (in case most recent is incomplete)
+                        try:
+                            prev_close = float(bars_sorted[1].get("c", 0))
+                            print(f"✅ {symbol}: previous_close={prev_close} (from IEX feed)")
+                            return prev_close if prev_close > 0 else None
+                        except (ValueError, TypeError):
+                            pass
+                    elif len(bars_sorted) == 1:
+                        try:
+                            prev_close = float(bars_sorted[0].get("c", 0))
+                            print(f"✅ {symbol}: previous_close={prev_close} (from IEX feed - 1 bar only)")
+                            return prev_close if prev_close > 0 else None
+                        except (ValueError, TypeError):
+                            pass
+            
+            # ===== ATTEMPT 2: Try SIP with delayed end time (15+ mins ago) =====
+            # Only query SIP data up to 15 minutes ago to avoid "recent SIP data" restriction
+            delayed_end = datetime.now() - timedelta(minutes=15)
+            delayed_end_str = delayed_end.strftime("%Y-%m-%d")
+            
+            url_sip = f"{self.data_api_url}/v2/stocks/{symbol}/bars?timeframe=1Day&start={start_date}&end={delayed_end_str}&limit=5"
+            
+            response = requests.get(url_sip, headers=self.headers, timeout=5)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if "bars" in data and len(data["bars"]) > 0:
+                    bars = data["bars"]
+                    
+                    # Sort by timestamp descending (most recent first)
+                    bars_sorted = sorted(bars, key=lambda x: x.get("t", ""), reverse=True)
+                    
+                    if len(bars_sorted) > 1:
+                        try:
+                            prev_close = float(bars_sorted[1].get("c", 0))
+                            print(f"✅ {symbol}: previous_close={prev_close} (from delayed SIP data)")
+                            return prev_close if prev_close > 0 else None
+                        except (ValueError, TypeError):
+                            pass
+                    elif len(bars_sorted) == 1:
+                        try:
+                            prev_close = float(bars_sorted[0].get("c", 0))
+                            print(f"✅ {symbol}: previous_close={prev_close} (from delayed SIP data - 1 bar only)")
+                            return prev_close if prev_close > 0 else None
+                        except (ValueError, TypeError):
+                            pass
+            
+            # ===== BOTH FAILED: Return None =====
+            print(f"⚠️ {symbol}: Could not fetch previous_close (IEX and SIP both unavailable)")
+            return None
                     
         except Exception as e:
-            print(f"Warning: Error getting previous close for {symbol}: {e}")
-            # Return None - will display "--" in UI
+            print(f"⚠️ Error getting previous close for {symbol}: {e}")
         
         return None
     
