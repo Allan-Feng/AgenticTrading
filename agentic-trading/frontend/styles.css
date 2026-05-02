@@ -1193,16 +1193,17 @@ body {
     width: 100%;
     height: calc(100vh - 180px);
     overflow: hidden;
-    padding: 16px;
+    padding: 12px;
     background-color: var(--bg-primary);
 }
 
 .paper-container {
     display: grid;
-    grid-template-columns: 280px 1fr 300px;
-    gap: 16px;
+    grid-template-columns: 250px 1fr 320px;
+    gap: 12px;
     height: 100%;
     max-height: calc(100vh - 180px);
+    padding-bottom: 40px;
 }
 
 .paper-left-panel {
