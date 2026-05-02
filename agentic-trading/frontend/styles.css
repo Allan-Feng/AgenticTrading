@@ -313,6 +313,30 @@ body {
     font-weight: 600;
 }
 
+.ticker-info {
+    background-color: var(--bg-surface);
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 10px;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.ticker-source-label {
+    cursor: help;
+    color: var(--text-muted);
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ticker-source-label:hover {
+    color: var(--text-secondary);
+}
+
 /* ============================================================================
    MAIN CONTAINER
    ============================================================================ */
