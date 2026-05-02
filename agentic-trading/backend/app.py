@@ -189,7 +189,7 @@ def run_backtest_background(start_date: str, end_date: str):
         backtest_status["running"] = True
         backtest_status["error"] = None
         
-        print(f"🚀 Background: Running backtest: {start_date} to {end_date}")
+        print(f"🚀 Background: Running backtest: {start_date} to {end_date}", flush=True)
         
         backend_dir = Path(__file__).parent.resolve()
         project_dir = backend_dir.parent.resolve()
@@ -197,9 +197,9 @@ def run_backtest_background(start_date: str, end_date: str):
         db_path = project_dir / "data" / "backtest.db"
         
         # Check database directory
-        print(f"📁 Database path: {db_path}")
-        print(f"📁 Database dir exists: {db_path.parent.exists()}")
-        print(f"📁 Can write to {db_path.parent}: {os.access(db_path.parent, os.W_OK)}")
+        print(f"📁 Database path: {db_path}", flush=True)
+        print(f"📁 Database dir exists: {db_path.parent.exists()}", flush=True)
+        print(f"📁 Can write to {db_path.parent}: {os.access(db_path.parent, os.W_OK)}", flush=True)
         
         # Run backtest script
         result = subprocess.run(
@@ -213,25 +213,26 @@ def run_backtest_background(start_date: str, end_date: str):
         
         # Print script output for debugging
         if result.stdout:
-            print(f"📋 Backtest script stdout:\n{result.stdout[:1000]}")
+            print(f"📋 Backtest script stdout:\n{result.stdout[:1000]}", flush=True)
         if result.stderr:
-            print(f"⚠️ Backtest script stderr:\n{result.stderr[:1000]}")
+            print(f"⚠️ Backtest script stderr:\n{result.stderr[:1000]}", flush=True)
         
         if result.returncode != 0:
             error_msg = result.stderr if result.stderr else result.stdout
             backtest_status["error"] = error_msg[-500:]
-            print(f"❌ Backtest failed (returncode={result.returncode}): {error_msg[-200:]}")
+            print(f"❌ Backtest failed (returncode={result.returncode}): {error_msg[-200:]}", flush=True)
         else:
             runs = db.get_runs_by_mode("backtest")
             backtest_status["runs_count"] = len(runs)
-            print(f"✅ Backtest completed. Found {len(runs)} runs in database.")
+            print(f"✅ Backtest completed. Found {len(runs)} runs in database.", flush=True)
             if len(runs) > 0:
-                print(f"   Run IDs: {[r['run_id'] for r in runs[:3]]}")
+                print(f"   Run IDs: {[r['run_id'] for r in runs[:3]]}", flush=True)
     except Exception as e:
         backtest_status["error"] = str(e)
-        print(f"❌ Backtest exception: {e}")
+        print(f"❌ Backtest exception: {e}", flush=True)
     finally:
         backtest_status["running"] = False
+        print(f"✋ Backtest background thread finished", flush=True)
 
 @app.post("/backtest/run")
 async def run_backtest_endpoint(start_date: str = "2026-04-15", end_date: str = "2026-04-23"):
@@ -240,13 +241,17 @@ async def run_backtest_endpoint(start_date: str = "2026-04-15", end_date: str = 
     
     Returns immediately with status. Check /backtest/status to monitor progress.
     """
+    print(f"📌 /backtest/run endpoint called: start_date={start_date}, end_date={end_date}", flush=True)
+    
     if backtest_status["running"]:
+        print(f"⚠️ Backtest already running, rejecting request", flush=True)
         return {
             "success": False,
             "error": "Backtest already running. Please wait for it to complete."
         }
     
     # Start backtest in background thread
+    print(f"🧵 Starting background thread for backtest", flush=True)
     thread = threading.Thread(
         target=run_backtest_background,
         args=(start_date, end_date),
