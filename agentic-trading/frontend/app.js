@@ -792,7 +792,7 @@ async function loadPaperTradingData() {
         
         // Display equity curve
         if (historyData?.success && historyData?.equity_curve) {
-            displayEquityCurve(historyData.equity_curve);
+            await displayEquityCurve(historyData.equity_curve);
         }
         
         // Display trades
@@ -889,7 +889,7 @@ function displayPositions(positions) {
 /**
  * Display equity curve chart
  */
-function displayEquityCurve(equityCurve) {
+async function displayEquityCurve(equityCurve) {
     console.log('Displaying equity curve with', equityCurve.length, 'points');
     
     const canvas = document.getElementById('paperEquityChart');
@@ -910,22 +910,61 @@ function displayEquityCurve(equityCurve) {
     
     const equityValues = equityCurve.map(point => parseFloat(point.equity) || 0);
     
+    // Fetch DJIA baseline
+    let djiaValues = [];
+    try {
+        const response = await fetch(`${API_BASE}/paper/baselines?t=${Date.now()}`, {
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
+        });
+        if (response.ok) {
+            const data = await response.json();
+            if (data.baselines && data.baselines.djia) {
+                djiaValues = data.baselines.djia.map(point => parseFloat(point.equity) || 0);
+                console.log('✅ DJIA baseline loaded:', djiaValues.length, 'points');
+            }
+        }
+    } catch (error) {
+        console.warn('Could not fetch DJIA baseline:', error.message);
+    }
+    
+    // Build datasets
+    const datasets = [{
+        label: 'Portfolio Equity',
+        data: equityValues,
+        borderColor: '#4FC3F7',
+        backgroundColor: 'transparent',
+        borderWidth: 2.5,
+        fill: false,
+        tension: 0.3,
+        pointRadius: 0,
+        pointHoverRadius: 5
+    }];
+    
+    // Add DJIA if available
+    if (djiaValues.length === equityValues.length) {
+        datasets.push({
+            label: 'DJIA Index',
+            data: djiaValues,
+            borderColor: '#F5C04A',
+            backgroundColor: 'transparent',
+            borderWidth: 2.5,
+            fill: false,
+            tension: 0.3,
+            pointRadius: 0,
+            pointHoverRadius: 5
+        });
+    }
+    
     // Create chart
     window.paperChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
             labels: timestamps,
-            datasets: [{
-                label: 'Portfolio Equity',
-                data: equityValues,
-                borderColor: '#4FC3F7',
-                backgroundColor: 'transparent',
-                borderWidth: 2.5,
-                fill: false,
-                tension: 0.3,
-                pointRadius: 0,
-                pointHoverRadius: 5
-            }]
+            datasets: datasets
         },
         options: {
             responsive: true,

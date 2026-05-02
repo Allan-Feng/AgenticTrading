@@ -1216,12 +1216,11 @@ body {
 }
 
 .paper-left-panel > .paper-card:last-child {
-    flex: 1;  /* Positions card takes remaining space */
-    min-height: 0;
+    flex-shrink: 0;
+    max-height: 400px;
     overflow-y: auto;
     overflow-x: hidden;
 }
-
 .paper-left-panel > .paper-card:last-child::-webkit-scrollbar {
     width: 8px;
 }
@@ -1255,8 +1254,7 @@ body {
 }
 
 .paper-right-panel > .paper-card {
-    flex: 1;
-    min-height: 0;
+    flex-shrink: 0;
     overflow-y: auto;
     overflow-x: hidden;
 }
@@ -1290,7 +1288,7 @@ body {
 }
 
 .paper-center-panel .paper-card {
-    flex: 1;
+    height: 420px;
     overflow: hidden;
 }
 
@@ -1359,7 +1357,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    max-height: 280px;
+    max-height: 300px;
     overflow-y: auto;
     overflow-x: hidden;
 }
