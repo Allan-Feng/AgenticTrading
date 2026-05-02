@@ -238,16 +238,15 @@ function initializeCharts() {
             }
         });
         
-        // Build datasets in specific order: Agent, buy-and-hold, DJIA, deepseek
+        // Build datasets in specific order: Agent, DJIA, buy-and-hold
         const datasets = [];
         const colorMap = {
-            'agent': '#00d9ff',      // Bright Cyan (Selected Agent)
-            'buy-and-hold': '#1a1a2e',  // Dark/Black (Market Baseline)
-            'djia': '#c084fc',          // Purple/Magenta (Equal-Weight Baseline)
-            'deepseek': '#ff6b35'       // Orange/Red (DeepSeek Agent)
+            'agent': '#4FC3F7',      // Light Blue (Primary focus)
+            'djia': '#F5C04A',       // Gold/Yellow (Market reference)
+            'buy-and-hold': '#9AA4B2'   // Gray/Silver (Secondary baseline)
         };
         
-        const order = ['agent', 'buy-and-hold', 'djia', 'deepseek'];
+        const order = ['agent', 'djia', 'buy-and-hold'];
         const timestamps = runs[0].data.map(point => point.timestamp);
         
         order.forEach(agentType => {
