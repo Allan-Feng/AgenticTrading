@@ -184,6 +184,7 @@ def run_backtest_background(start_date: str, end_date: str):
     try:
         import subprocess
         import sys
+        import os
         
         backtest_status["running"] = True
         backtest_status["error"] = None
@@ -193,6 +194,12 @@ def run_backtest_background(start_date: str, end_date: str):
         backend_dir = Path(__file__).parent.resolve()
         project_dir = backend_dir.parent.resolve()
         script_path = project_dir / "scripts" / "backtest_hourly_agent.py"
+        db_path = project_dir / "data" / "backtest.db"
+        
+        # Check database directory
+        print(f"📁 Database path: {db_path}")
+        print(f"📁 Database dir exists: {db_path.parent.exists()}")
+        print(f"📁 Can write to {db_path.parent}: {os.access(db_path.parent, os.W_OK)}")
         
         # Run backtest script
         result = subprocess.run(
@@ -204,14 +211,22 @@ def run_backtest_background(start_date: str, end_date: str):
             timeout=300
         )
         
+        # Print script output for debugging
+        if result.stdout:
+            print(f"📋 Backtest script stdout:\n{result.stdout[:1000]}")
+        if result.stderr:
+            print(f"⚠️ Backtest script stderr:\n{result.stderr[:1000]}")
+        
         if result.returncode != 0:
             error_msg = result.stderr if result.stderr else result.stdout
             backtest_status["error"] = error_msg[-500:]
-            print(f"❌ Backtest failed: {error_msg[-200:]}")
+            print(f"❌ Backtest failed (returncode={result.returncode}): {error_msg[-200:]}")
         else:
             runs = db.get_runs_by_mode("backtest")
             backtest_status["runs_count"] = len(runs)
-            print(f"✅ Backtest completed. Found {len(runs)} runs.")
+            print(f"✅ Backtest completed. Found {len(runs)} runs in database.")
+            if len(runs) > 0:
+                print(f"   Run IDs: {[r['run_id'] for r in runs[:3]]}")
     except Exception as e:
         backtest_status["error"] = str(e)
         print(f"❌ Backtest exception: {e}")
