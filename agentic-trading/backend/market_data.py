@@ -85,22 +85,44 @@ class AlpacaMarketData:
                     quote = data["quote"]
                     
                     # STEP 1: Get current price using bid/ask midpoint
-                    ap = quote.get("ap")  # Ask price
-                    bp = quote.get("bp")  # Bid price
-                    
-                    if ap and bp:
-                        # Use midpoint of bid/ask
-                        current_price = (ap + bp) / 2
-                    elif ap:
-                        current_price = ap
-                    elif bp:
-                        current_price = bp
-                    else:
-                        # Fallback to last trade price if available
-                        current_price = quote.get("p", None)
-                    
-                    if not current_price or current_price <= 0:
-                        print(f"Could not determine current price for {symbol}")
+                    try:
+                        # Extract and convert to float
+                        ap = quote.get("ap")
+                        bp = quote.get("bp")
+                        p = quote.get("p")
+                        
+                        # Convert all to float, skip if conversion fails
+                        try:
+                            ap = float(ap) if ap else None
+                        except (ValueError, TypeError):
+                            ap = None
+                        
+                        try:
+                            bp = float(bp) if bp else None
+                        except (ValueError, TypeError):
+                            bp = None
+                        
+                        try:
+                            p = float(p) if p else None
+                        except (ValueError, TypeError):
+                            p = None
+                        
+                        # Calculate current price with fallback logic
+                        current_price = None
+                        if ap is not None and ap > 0 and bp is not None and bp > 0:
+                            current_price = (ap + bp) / 2
+                        elif ap is not None and ap > 0:
+                            current_price = ap
+                        elif bp is not None and bp > 0:
+                            current_price = bp
+                        elif p is not None and p > 0:
+                            current_price = p
+                        
+                        if current_price is None or current_price <= 0:
+                            print(f"DEBUG {symbol}: Could not determine current price (ap={ap}, bp={bp}, p={p})")
+                            return None
+                    except Exception as e:
+                        print(f"Error calculating current price for {symbol}: {e}")
                         return None
                     
                     # STEP 2: Get previous close from historical daily bars
@@ -170,12 +192,20 @@ class AlpacaMarketData:
                         if len(bars_sorted) > 1:
                             # Use the bar before the most recent one as "previous close"
                             # (assuming most recent might be today's incomplete bar)
-                            prev_close = float(bars_sorted[1].get("c", 0))
-                            print(f"DEBUG {symbol}: previous_close={prev_close} (from 2nd most recent bar)")
-                            return prev_close if prev_close > 0 else None
+                            try:
+                                prev_close = float(bars_sorted[1].get("c", 0))
+                                print(f"DEBUG {symbol}: previous_close={prev_close} (from 2nd most recent bar)")
+                                return prev_close if prev_close > 0 else None
+                            except (ValueError, TypeError) as e:
+                                print(f"DEBUG {symbol}: Could not convert close price: {e}")
+                                return None
                         else:
-                            print(f"DEBUG {symbol}: previous_close={most_recent_close} (only one bar available)")
-                            return most_recent_close if most_recent_close > 0 else None
+                            try:
+                                print(f"DEBUG {symbol}: previous_close={most_recent_close} (only one bar available)")
+                                return most_recent_close if most_recent_close > 0 else None
+                            except (ValueError, TypeError) as e:
+                                print(f"DEBUG {symbol}: Could not convert close price: {e}")
+                                return None
             else:
                 print(f"Error fetching bars for {symbol}: {response.status_code}")
                     
