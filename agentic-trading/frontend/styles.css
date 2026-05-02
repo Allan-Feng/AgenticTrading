@@ -1192,7 +1192,7 @@ body {
 .paper-trading-view {
     width: 100%;
     height: calc(100vh - 180px);
-    overflow-y: auto;
+    overflow: hidden;
     padding: 20px;
     background-color: var(--bg-primary);
 }
@@ -1202,25 +1202,58 @@ body {
     grid-template-columns: 280px 1fr 300px;
     gap: 20px;
     height: 100%;
+    max-height: calc(100vh - 180px);
 }
 
 .paper-left-panel {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.paper-left-panel > .paper-card:first-child {
+    flex-shrink: 0;  /* Account summary stays fixed height */
+}
+
+.paper-left-panel > .paper-card:last-child {
+    flex: 1;  /* Positions card takes remaining space */
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;  /* Hide scrollbar Firefox */
+    -ms-overflow-style: none;  /* Hide scrollbar IE/Edge */
+}
+
+.paper-left-panel > .paper-card:last-child::-webkit-scrollbar {
+    display: none;  /* Hide scrollbar Chrome/Safari */
 }
 
 .paper-center-panel {
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
+    overflow: hidden;
 }
 
 .paper-right-panel {
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.paper-right-panel > .paper-card {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;  /* Hide scrollbar Firefox */
+    -ms-overflow-style: none;  /* Hide scrollbar IE/Edge */
+}
+
+.paper-right-panel > .paper-card::-webkit-scrollbar {
+    display: none;  /* Hide scrollbar Chrome/Safari */
 }
 
 .paper-card {
@@ -1231,6 +1264,12 @@ body {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    flex-shrink: 0;
+}
+
+.paper-center-panel .paper-card {
+    flex: 1;
+    overflow: hidden;
 }
 
 .paper-card h3 {
@@ -1298,8 +1337,16 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    max-height: 400px;
+    max-height: 280px;
     overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;  /* Hide scrollbar Firefox */
+    -ms-overflow-style: none;  /* Hide scrollbar IE/Edge */
+}
+
+.positions-list::-webkit-scrollbar,
+.trades-list::-webkit-scrollbar {
+    display: none;  /* Hide scrollbar Chrome/Safari */
 }
 
 .position-item,
@@ -1364,8 +1411,10 @@ body {
 }
 
 .chart-container {
-    height: 400px;
+    height: 100%;
+    min-height: 350px;
     position: relative;
+    flex: 1;
 }
 
 @media (max-width: 1400px) {

@@ -936,16 +936,16 @@ function displayEquityCurve(equityCurve) {
                 legend: {
                     display: true,
                     labels: {
-                        color: 'var(--text-primary)',
+                        color: '#e5e7eb',
                         usePointStyle: true,
                         padding: 15,
                         font: { size: 12, weight: '600' }
                     }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    titleColor: '#4FC3F7',
+                    bodyColor: '#e5e7eb',
                     borderColor: '#4FC3F7',
                     borderWidth: 1,
                     padding: 12,
@@ -960,19 +960,19 @@ function displayEquityCurve(equityCurve) {
                 y: {
                     beginAtZero: false,
                     ticks: {
-                        color: 'var(--text-muted)',
-                        font: { size: 11 },
+                        color: '#e5e7eb',
+                        font: { size: 11, weight: '500' },
                         callback: (value) => formatCurrency(value)
                     },
                     grid: {
-                        color: 'var(--grid-color)',
+                        color: '#1f2937',
                         drawBorder: false
                     }
                 },
                 x: {
                     ticks: {
-                        color: 'var(--text-muted)',
-                        font: { size: 11 },
+                        color: '#e5e7eb',
+                        font: { size: 11, weight: '500' },
                         maxRotation: 45,
                         minRotation: 0
                     },
