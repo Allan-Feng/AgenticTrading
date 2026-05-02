@@ -78,12 +78,24 @@ document.addEventListener('DOMContentLoaded', async () => {
  */
 async function loadPerformanceMetrics() {
     try {
-        const response = await fetch(`${API_BASE}/runs/latest/metrics`);
+        // Add cache-busting timestamp to ensure fresh data
+        const cacheBustUrl = `${API_BASE}/runs/latest/metrics?t=${Date.now()}`;
+        const response = await fetch(cacheBustUrl, {
+            // Force fresh data, don't use browser cache
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
+        });
         
         if (response.ok) {
             const metrics = await response.json();
             displayPerformanceMetrics(metrics);
             console.log('✅ Performance metrics loaded:', metrics);
+            console.log(`   Final Value: $${(metrics.initial_equity * (1 + metrics.total_return / 100)).toFixed(0)}`);
+            console.log(`   Return: ${metrics.total_return.toFixed(2)}%`);
+            console.log(`   Sharpe: ${metrics.sharpe_ratio.toFixed(2)}`);
         } else {
             console.warn('Could not fetch metrics:', response.status);
             // Show placeholder if no data available
@@ -97,6 +109,16 @@ async function loadPerformanceMetrics() {
 
 /**
  * Display performance metrics in the summary panel
+ */
+/**
+ * Display performance metrics from backtest results.
+ * 
+ * Metric Formulas:
+ * 1. Final Portfolio Value: last portfolio value in equity curve
+ * 2. Cumulative Return: (final_value - initial_capital) / initial_capital * 100
+ * 3. Max Drawdown: minimum drawdown = (value - running_peak) / running_peak * 100
+ * 4. Sharpe Ratio: (mean(returns) / std(returns)) * sqrt(252*6.5)
+ *    - Hourly data with 252 trading days/year and 6.5 hours/day
  */
 function displayPerformanceMetrics(metrics) {
     // Calculate final value from initial equity and total return
@@ -131,11 +153,13 @@ function displayPerformanceMetrics(metrics) {
     }
     
     // Update Sharpe Ratio
+    // Note: Calculated using hourly data with annualization factor sqrt(252*6.5)
     const sharpeEl = document.querySelector('[data-metric="sharpe"]');
     if (sharpeEl) {
         const sharpe = metrics.sharpe_ratio || 0;
         sharpeEl.textContent = sharpe.toFixed(2);
         sharpeEl.className = 'metric-value';
+        // Tooltip already set in HTML with title attribute
     }
 }
 
@@ -366,6 +390,8 @@ async function pollBacktestStatus(btn) {
                         alert(`Backtest completed! Found ${status.runs_count} runs.`);
                         // Reload data to display new backtest results
                         await loadData();
+                        // CRITICAL: Refresh metrics to show latest backtest results
+                        await loadPerformanceMetrics();
                     }
                     
                     btn.textContent = '▶ Run Backtest';
@@ -422,8 +448,8 @@ async function loadData() {
         console.log('Loading data for mode:', currentMode);
         
         if (currentMode === 'backtest') {
-            // Fetch all runs
-            const runsResponse = await fetch(`${API_BASE}/runs`);
+            // Fetch all runs (with cache-busting)
+            const runsResponse = await fetch(`${API_BASE}/runs?t=${Date.now()}`);
             if (!runsResponse.ok) {
                 console.error('Failed to fetch runs:', runsResponse.status);
                 return;
@@ -441,8 +467,8 @@ async function loadData() {
             const runIds = allRuns.map(r => r.run_id).join(',');
             console.log('Comparing run IDs:', runIds);
             
-            // Fetch comparison data with run IDs
-            const compareUrl = `${API_BASE}/compare?run_ids=${encodeURIComponent(runIds)}`;
+            // Fetch comparison data with run IDs (with cache-busting)
+            const compareUrl = `${API_BASE}/compare?run_ids=${encodeURIComponent(runIds)}&t=${Date.now()}`;
             const compareResponse = await fetch(compareUrl);
             if (!compareResponse.ok) {
                 console.error('Failed to fetch comparison:', compareResponse.status);

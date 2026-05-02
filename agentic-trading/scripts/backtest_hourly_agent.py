@@ -673,7 +673,20 @@ class HourlyBacktester:
     
     @staticmethod
     def _calc_sharpe(equity_curve: List[Dict]) -> float:
-        """Calculate Sharpe ratio."""
+        """
+        Calculate Sharpe ratio from hourly equity curve.
+        
+        Formula:
+            sharpe = (mean(returns) / std(returns)) * sqrt(periods_per_year)
+        
+        Data is HOURLY, so annualization factor = sqrt(252 * 6.5):
+            - 252 = trading days per year
+            - 6.5 = trading hours per day (9:30 AM - 4:00 PM ET)
+            - Total: sqrt(1638) ≈ 40.47
+        
+        Returns: float
+            Annualized Sharpe ratio. Returns 0 if insufficient data or zero volatility.
+        """
         if len(equity_curve) < 2:
             return 0
         
@@ -683,7 +696,9 @@ class HourlyBacktester:
         if len(returns) == 0 or np.std(returns) == 0:
             return 0
         
-        return (np.mean(returns) / np.std(returns)) * np.sqrt(252)
+        # Annualize for hourly data: sqrt(252 trading days * 6.5 hours/day)
+        annualization_factor = np.sqrt(252 * 6.5)
+        return (np.mean(returns) / np.std(returns)) * annualization_factor
     
     @staticmethod
     def _calc_max_dd(equity_curve: List[Dict]) -> float:

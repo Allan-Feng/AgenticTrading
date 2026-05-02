@@ -280,118 +280,79 @@ class AlpacaMarketData:
     
     def get_crypto_quote(self, symbol: str) -> Optional[Dict]:
         """
-        Get crypto quote (BTC, ETH, etc.) from Alpaca API.
-        Uses Alpaca's crypto quotes and historical bars.
+        Get crypto quote (BTC, ETH, etc.) from a free public API.
+        Alpaca free tier doesn't support crypto quotes, so we use CoinGecko.
         """
         try:
-            # Map crypto symbols to Alpaca format (e.g., BTC -> BTC/USD)
-            crypto_pairs = {
-                "BTC": "BTC/USD",
-                "ETH": "ETH/USD",
-                "XRP": "XRP/USD",
-                "SOL": "SOL/USD",
+            if symbol not in ["BTC", "ETH", "XRP", "SOL"]:
+                return None
+            
+            # Map symbols to CoinGecko IDs
+            gecko_ids = {
+                "BTC": "bitcoin",
+                "ETH": "ethereum",
+                "XRP": "ripple",
+                "SOL": "solana",
             }
             
-            alpaca_symbol = crypto_pairs.get(symbol)
-            if not alpaca_symbol:
+            gecko_id = gecko_ids.get(symbol)
+            if not gecko_id:
                 return None
             
-            # STEP 1: Get current price from Alpaca crypto quote
-            url_quote = f"{self.data_api_url}/v2/crypto/{alpaca_symbol}/quotes/latest"
-            response = requests.get(url_quote, headers=self.headers, timeout=5)
+            # STEP 1: Fetch from CoinGecko API (free, no auth needed)
+            url = f"https://api.coingecko.com/api/v3/simple/price?ids={gecko_id}&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true"
+            print(f"  Fetching {symbol} from CoinGecko: {url}")
             
-            if response.status_code != 200:
-                print(f"⚠️ {symbol}: Could not fetch Alpaca crypto quote: {response.status_code}")
-                return None
+            # Retry up to 2 times on rate limit
+            max_retries = 2
+            for attempt in range(max_retries):
+                response = requests.get(url, timeout=5)
+                
+                if response.status_code == 200:
+                    break
+                elif response.status_code == 429:
+                    print(f"⚠️ {symbol}: Rate limited (429) - attempt {attempt + 1}/{max_retries}")
+                    if attempt < max_retries - 1:
+                        import time
+                        time.sleep(1)  # Wait before retry
+                    else:
+                        print(f"⚠️ {symbol}: Could not fetch CoinGecko quote after {max_retries} attempts: rate limited")
+                        return None
+                else:
+                    print(f"⚠️ {symbol}: Could not fetch CoinGecko quote: {response.status_code}")
+                    return None
             
             data = response.json()
-            if "quote" not in data:
-                print(f"⚠️ {symbol}: No quote data from Alpaca")
+            
+            # CoinGecko returns: {gecko_id: {usd: price, usd_24h_change: percent}}
+            if gecko_id not in data:
+                print(f"⚠️ {symbol}: No data from CoinGecko")
                 return None
             
-            quote = data["quote"]
-            quote_timestamp = quote.get("t", "unknown")
-            
-            # Extract current price
-            ap = quote.get("ap")  # Ask price
-            bp = quote.get("bp")  # Bid price
+            crypto_data = data[gecko_id]
             
             try:
-                ap = float(ap) if ap else None
-            except (ValueError, TypeError):
-                ap = None
-            
-            try:
-                bp = float(bp) if bp else None
-            except (ValueError, TypeError):
-                bp = None
-            
-            # Calculate current price
-            if ap is not None and ap > 0 and bp is not None and bp > 0:
-                current_price = (ap + bp) / 2
-                price_source = "midpoint(ap,bp)"
-            elif ap is not None and ap > 0:
-                current_price = ap
-                price_source = "ask(ap)"
-            elif bp is not None and bp > 0:
-                current_price = bp
-                price_source = "bid(bp)"
-            else:
-                print(f"⚠️ {symbol}: Could not determine current price from Alpaca")
+                current_price = float(crypto_data.get("usd", 0))
+                change_percent = float(crypto_data.get("usd_24h_change", None))
+                quote_timestamp = datetime.now().isoformat()
+            except (ValueError, TypeError) as e:
+                print(f"⚠️ {symbol}: Could not parse CoinGecko data: {e}")
                 return None
             
-            print(f"✅ {symbol}: current_price={current_price} source={price_source} ts={quote_timestamp}")
+            if current_price <= 0:
+                print(f"⚠️ {symbol}: Invalid current price from CoinGecko: {current_price}")
+                return None
             
-            # STEP 2: Get previous close from Alpaca crypto bars
-            from datetime import datetime, timedelta
+            print(f"✅ {symbol}: current_price={current_price} source=CoinGecko ts={quote_timestamp}")
             
-            end_date = datetime.now().strftime("%Y-%m-%d")
-            start_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-            
-            url_bars = f"{self.data_api_url}/v2/crypto/{alpaca_symbol}/bars?timeframe=1Day&start={start_date}&end={end_date}&limit=5"
-            print(f"  Fetching {symbol} previous_close from Alpaca crypto bars")
-            
-            response = requests.get(url_bars, headers=self.headers, timeout=5)
-            
-            if response.status_code == 200:
-                data = response.json()
-                if "bars" in data and len(data["bars"]) > 0:
-                    bars = data["bars"]
-                    bars_sorted = sorted(bars, key=lambda x: x.get("t", ""), reverse=True)
-                    
-                    if len(bars_sorted) > 1:
-                        try:
-                            bar_timestamp = bars_sorted[1].get("t", "unknown")
-                            prev_close = float(bars_sorted[1].get("c", 0))
-                            print(f"✅ {symbol}: previous_close={prev_close} (from Alpaca bars, ts={bar_timestamp})")
-                        except (ValueError, TypeError):
-                            prev_close = None
-                    elif len(bars_sorted) == 1:
-                        try:
-                            bar_timestamp = bars_sorted[0].get("t", "unknown")
-                            prev_close = float(bars_sorted[0].get("c", 0))
-                            print(f"✅ {symbol}: previous_close={prev_close} (from Alpaca bars - 1 bar only, ts={bar_timestamp})")
-                        except (ValueError, TypeError):
-                            prev_close = None
-                    else:
-                        prev_close = None
-                else:
-                    prev_close = None
+            if change_percent is not None:
+                print(f"✅ {symbol}: change_percent={change_percent:.2f}% (24h change from CoinGecko)")
             else:
-                print(f"⚠️ {symbol}: Could not fetch Alpaca crypto bars: {response.status_code}")
-                prev_close = None
+                print(f"⚠️ {symbol}: No 24h change data available")
             
-            # STEP 3: Calculate % change
-            if prev_close and prev_close > 0:
-                change_percent = ((current_price - prev_close) / prev_close) * 100
-                print(f"✅ {symbol}: change_percent={change_percent:.2f}% (current={current_price} - prev_close={prev_close})")
-            else:
-                change_percent = None
-                print(f"⚠️ {symbol}: No previous_close available, showing '--' for % change")
-            
-            # Format price (show thousands as k)
+            # Format price (show thousands as k for consistency)
             if current_price >= 1000:
-                formatted_price = f"{current_price/1000:.1f}k"
+                formatted_price = f"{current_price/1000:.2f}k"
             else:
                 formatted_price = f"{current_price:.2f}"
             
