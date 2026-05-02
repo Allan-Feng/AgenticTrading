@@ -947,7 +947,7 @@ async function displayEquityCurve(equityCurve) {
     
     // Build datasets
     const datasets = [{
-        label: 'Portfolio Equity',
+        label: 'Your Portfolio',
         data: equityValues,
         borderColor: '#4FC3F7',
         backgroundColor: 'transparent',
