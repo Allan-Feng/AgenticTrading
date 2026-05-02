@@ -1238,8 +1238,10 @@ body {
 .paper-right-panel {
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    min-height: 0;
+    gap: 12px;
+    overflow-y: visible;
+    overflow-x: hidden;
+    align-content: flex-start;
 }
 
 .paper-right-panel > .paper-card {
