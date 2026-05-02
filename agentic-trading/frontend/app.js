@@ -778,7 +778,7 @@ async function loadPaperTradingData() {
         console.log('✅ All paper trading data loaded');
         console.log('  Account:', accountData?.account);
         console.log('  Positions:', positionsData?.positions?.length || 0);
-        console.log('  History points:', historyData?.history?.length || 0);
+        console.log('  Equity curve points:', historyData?.equity_curve?.length || 0);
         console.log('  Recent trades:', tradesData?.trades?.length || 0);
         
         // Display account metrics
@@ -792,8 +792,8 @@ async function loadPaperTradingData() {
         }
         
         // Display equity curve
-        if (historyData?.success && historyData?.history) {
-            displayEquityCurve(historyData.history);
+        if (historyData?.success && historyData?.equity_curve) {
+            displayEquityCurve(historyData.equity_curve);
         }
         
         // Display trades
@@ -813,29 +813,35 @@ async function loadPaperTradingData() {
 function displayAccountMetrics(account) {
     console.log('Displaying account metrics:', account);
     
-    // Portfolio Value
+    // Portfolio Value (use equity)
     const portfolioEl = document.getElementById('portfolioValue');
-    if (portfolioEl && account.equity) {
-        portfolioEl.textContent = formatCurrency(account.equity);
+    if (portfolioEl) {
+        const equity = parseFloat(account.equity) || parseFloat(account.portfolio_value) || 0;
+        portfolioEl.textContent = formatCurrency(equity);
+        portfolioEl.className = 'paper-value';
     }
     
     // Cash
     const cashEl = document.getElementById('cashValue');
-    if (cashEl && account.cash) {
-        cashEl.textContent = formatCurrency(account.cash);
+    if (cashEl) {
+        const cash = parseFloat(account.cash) || 0;
+        cashEl.textContent = formatCurrency(cash);
+        cashEl.className = 'paper-value';
     }
     
     // Buying Power
     const buyingPowerEl = document.getElementById('buyingPowerValue');
-    if (buyingPowerEl && account.buying_power) {
-        buyingPowerEl.textContent = formatCurrency(account.buying_power);
+    if (buyingPowerEl) {
+        const buyingPower = parseFloat(account.buying_power) || 0;
+        buyingPowerEl.textContent = formatCurrency(buyingPower);
+        buyingPowerEl.className = 'paper-value';
     }
     
-    // Day P&L
+    // Day P&L (try to get from account, fallback to 0)
     const dayPnLEl = document.getElementById('dayPnL');
-    if (dayPnLEl && account.day_pnl !== undefined) {
+    if (dayPnLEl) {
         const dayPnL = parseFloat(account.day_pnl) || 0;
-        const dayPnLPercent = account.equity ? (dayPnL / account.equity) * 100 : 0;
+        const dayPnLPercent = parseFloat(account.equity) ? (dayPnL / parseFloat(account.equity)) * 100 : 0;
         dayPnLEl.textContent = (dayPnL >= 0 ? '+' : '') + formatCurrency(dayPnL);
         dayPnLEl.className = 'paper-value ' + (dayPnL >= 0 ? 'positive' : 'negative');
     }
@@ -856,23 +862,24 @@ function displayPositions(positions) {
     }
     
     positionsList.innerHTML = positions.map(pos => {
-        const currentValue = (pos.current_price || 0) * pos.qty;
-        const unrealizedPnL = parseFloat(pos.unrealized_pl || 0);
-        const unrealizedPnLPercent = parseFloat(pos.unrealized_plpc || 0);
+        const qty = parseFloat(pos.qty) || 0;
+        const currentPrice = parseFloat(pos.current_price) || 0;
+        const unrealizedPnL = parseFloat(pos.unrealized_pl) || 0;
+        const unrealizedPnLPercent = parseFloat(pos.unrealized_plpc) || 0;
         const isPositive = unrealizedPnL >= 0;
         
         return `
             <div class="position-item">
                 <div style="flex: 1;">
                     <div class="position-symbol">${pos.symbol}</div>
-                    <div class="position-qty">${Math.abs(pos.qty)} shares @ $${(pos.current_price || 0).toFixed(2)}</div>
+                    <div class="position-qty">${Math.abs(qty)} @ $${currentPrice.toFixed(2)}</div>
                 </div>
                 <div style="text-align: right;">
                     <div class="position-pnl ${isPositive ? 'positive' : 'negative'}">
                         ${isPositive ? '+' : ''}$${unrealizedPnL.toFixed(2)}
                     </div>
                     <div style="font-size: 11px; color: var(--text-muted);">
-                        ${isPositive ? '+' : ''}${unrealizedPnLPercent.toFixed(2)}%
+                        ${isPositive ? '+' : ''}${(unrealizedPnLPercent * 100).toFixed(2)}%
                     </div>
                 </div>
             </div>
@@ -883,8 +890,8 @@ function displayPositions(positions) {
 /**
  * Display equity curve chart
  */
-function displayEquityCurve(history) {
-    console.log('Displaying equity curve with', history.length, 'points');
+function displayEquityCurve(equityCurve) {
+    console.log('Displaying equity curve with', equityCurve.length, 'points');
     
     const canvas = document.getElementById('paperEquityChart');
     if (!canvas) return;
@@ -897,12 +904,12 @@ function displayEquityCurve(history) {
     const ctx = canvas.getContext('2d');
     
     // Extract timestamps and equity values
-    const timestamps = history.map(h => {
-        const date = new Date(h.timestamp);
+    const timestamps = equityCurve.map(point => {
+        const date = new Date(point.timestamp);
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
     
-    const equityValues = history.map(h => parseFloat(h.equity) || 0);
+    const equityValues = equityCurve.map(point => parseFloat(point.equity) || 0);
     
     // Create chart
     window.paperChartInstance = new Chart(ctx, {
@@ -997,19 +1004,38 @@ function displayTrades(trades) {
     const recentTrades = trades.slice(0, 20);
     
     tradesList.innerHTML = recentTrades.map(trade => {
-        const date = new Date(trade.timestamp);
-        const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        const side = trade.side.toLowerCase();
+        // Parse timestamp from trade ID or use current time as fallback
+        let timeStr = '--:--';
+        if (trade.timestamp) {
+            const date = new Date(trade.timestamp);
+            timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        } else if (trade.id) {
+            // Extract timestamp from ID format like "20260430093148799"
+            const idParts = trade.id.split('::');
+            if (idParts[0].length >= 14) {
+                const ts = idParts[0];
+                const year = parseInt(ts.substring(0, 4));
+                const month = parseInt(ts.substring(4, 6));
+                const day = parseInt(ts.substring(6, 8));
+                const hour = parseInt(ts.substring(8, 10));
+                const minute = parseInt(ts.substring(10, 12));
+                timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+            }
+        }
+        
+        const side = (trade.side || 'hold').toLowerCase();
+        const qty = Math.abs(parseFloat(trade.qty) || 0);
+        const price = parseFloat(trade.price) || 0;
         
         return `
             <div class="trade-item">
                 <div style="flex: 1;">
                     <div class="trade-symbol">${trade.symbol}</div>
-                    <div class="trade-qty">${Math.abs(trade.quantity)} @ $${parseFloat(trade.price).toFixed(2)}</div>
+                    <div class="trade-qty">${qty} @ $${price.toFixed(2)}</div>
                 </div>
                 <div style="text-align: right;">
                     <div class="trade-side ${side}">${side.toUpperCase()}</div>
-                    <div class="trade-time">${time}</div>
+                    <div class="trade-time">${timeStr}</div>
                 </div>
             </div>
         `;
