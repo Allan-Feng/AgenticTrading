@@ -921,17 +921,23 @@ function displayEquityCurve(equityCurve) {
                 data: equityValues,
                 borderColor: '#4FC3F7',
                 backgroundColor: 'rgba(79, 195, 247, 0.1)',
-                borderWidth: 2,
+                borderWidth: 2.5,
                 fill: true,
                 tension: 0.3,
-                pointRadius: 0,
-                pointHoverRadius: 6,
-                pointBackgroundColor: '#4FC3F7'
+                pointRadius: 3,
+                pointHoverRadius: 8,
+                pointBackgroundColor: '#4FC3F7',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
             plugins: {
                 legend: {
                     display: true,
