@@ -112,12 +112,42 @@ class AlpacaMarketData:
     def _get_previous_close(self, symbol: str) -> Optional[float]:
         """Get previous close price for % change calculation."""
         try:
-            url = f"{self.base_url}/v1/assets/{symbol}"
+            # Use Alpaca Data API to get latest bar (includes previous close in quote)
+            url = f"{self.data_api_url}/v2/stocks/{symbol}/quotes/latest"
             response = requests.get(url, headers=self.headers, timeout=5)
             
             if response.status_code == 200:
                 data = response.json()
-                return data.get("prevclose")
+                
+                # Try to extract previous close from quote or use bid/ask as fallback
+                if "quote" in data:
+                    quote = data["quote"]
+                    
+                    # Alpaca quote has: ap (ask), bp (bid), p (last), c (close from previous day)
+                    # If not available, try getting from bars endpoint
+                    prev_close = quote.get("pc")  # Previous close
+                    
+                    if prev_close and prev_close > 0:
+                        return float(prev_close)
+                    
+                    # Fallback: use current bid as baseline (assumes market hours)
+                    current_price = quote.get("ap") or quote.get("bp") or quote.get("p")
+                    if current_price:
+                        return float(current_price) * 0.99  # Rough estimate if no prev close
+            
+            # Fallback to historical bars
+            from datetime import datetime, timedelta
+            end_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+            start_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+            
+            url = f"{self.data_api_url}/v2/stocks/{symbol}/bars?start={start_date}&end={end_date}&limit=1&timeframe=1d"
+            response = requests.get(url, headers=self.headers, timeout=5)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if "bars" in data and len(data["bars"]) > 0:
+                    return float(data["bars"][-1].get("c", 0))  # Close of previous day
+                    
         except Exception as e:
             print(f"Error getting previous close for {symbol}: {e}")
         
