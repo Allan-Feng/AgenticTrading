@@ -381,7 +381,7 @@ body {
 .date-input-wrapper {
     position: relative;
     flex: 1;
-    max-width: 105px;
+    max-width: 100px;
     display: flex;
     align-items: center;
 }
@@ -401,7 +401,7 @@ body {
 }
 
 .date-input {
-    padding-right: 26px;
+    padding-right: 1px;
 }
 
 .date-input::-webkit-calendar-picker-indicator {
