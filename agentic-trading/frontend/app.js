@@ -91,13 +91,26 @@ async function loadPerformanceMetrics() {
         
         if (response.ok) {
             const metrics = await response.json();
+            
+            // Validate metrics data
+            if (!metrics || !metrics.initial_equity) {
+                console.warn('Invalid metrics data:', metrics);
+                displayNoMetrics();
+                return;
+            }
+            
             displayPerformanceMetrics(metrics);
             console.log('✅ Performance metrics loaded:', metrics);
-            console.log(`   Final Value: $${(metrics.initial_equity * (1 + metrics.total_return / 100)).toFixed(0)}`);
-            console.log(`   Return: ${metrics.total_return.toFixed(2)}%`);
-            console.log(`   Sharpe: ${metrics.sharpe_ratio.toFixed(2)}`);
+            
+            // Log summary for debugging
+            const finalValue = metrics.initial_equity * (1 + (metrics.total_return || 0) / 100);
+            console.log(`   Final Value: $${finalValue.toFixed(0)}`);
+            console.log(`   Return: ${(metrics.total_return || 0).toFixed(2)}%`);
+            console.log(`   Max Drawdown: ${(metrics.max_drawdown || 0).toFixed(2)}%`);
+            console.log(`   Sharpe: ${(metrics.sharpe_ratio || 0).toFixed(2)}`);
         } else {
-            console.warn('Could not fetch metrics:', response.status);
+            const errorText = await response.text();
+            console.warn(`Could not fetch metrics: ${response.status}`, errorText);
             // Show placeholder if no data available
             displayNoMetrics();
         }
@@ -121,6 +134,8 @@ async function loadPerformanceMetrics() {
  *    - Hourly data with 252 trading days/year and 6.5 hours/day
  */
 function displayPerformanceMetrics(metrics) {
+    console.log('displayPerformanceMetrics() called with:', metrics);
+    
     // Calculate final value from initial equity and total return
     const initialCapital = metrics.initial_equity || 100000;
     const totalReturnPercent = metrics.total_return || 0;
@@ -134,22 +149,27 @@ function displayPerformanceMetrics(metrics) {
             maximumFractionDigits: 0
         });
         finalValueEl.className = 'metric-value ' + (totalReturnPercent >= 0 ? 'positive' : 'negative');
+        console.log(`  → Updated Final Value: $${finalValue.toFixed(0)}`);
     }
     
-    // Update Total Return
+    // Update Cumulative Return (renamed from Total Return)
     const returnEl = document.querySelector('[data-metric="total-return"]');
     if (returnEl) {
         const returnSign = totalReturnPercent >= 0 ? '+' : '';
-        returnEl.textContent = returnSign + totalReturnPercent.toFixed(2) + '%';
+        const returnText = returnSign + totalReturnPercent.toFixed(2) + '%';
+        returnEl.textContent = returnText;
         returnEl.className = 'metric-value ' + (totalReturnPercent >= 0 ? 'positive' : 'negative');
+        console.log(`  → Updated Cumulative Return: ${returnText}`);
     }
     
     // Update Max Drawdown
     const drawdownEl = document.querySelector('[data-metric="max-drawdown"]');
     if (drawdownEl) {
         const maxDrawdown = metrics.max_drawdown || 0;
-        drawdownEl.textContent = maxDrawdown.toFixed(2) + '%';
+        const drawdownText = maxDrawdown.toFixed(2) + '%';
+        drawdownEl.textContent = drawdownText;
         drawdownEl.className = 'metric-value ' + (maxDrawdown >= 0 ? 'positive' : 'negative');
+        console.log(`  → Updated Max Drawdown: ${drawdownText}`);
     }
     
     // Update Sharpe Ratio
@@ -157,8 +177,10 @@ function displayPerformanceMetrics(metrics) {
     const sharpeEl = document.querySelector('[data-metric="sharpe"]');
     if (sharpeEl) {
         const sharpe = metrics.sharpe_ratio || 0;
-        sharpeEl.textContent = sharpe.toFixed(2);
+        const sharpeText = sharpe.toFixed(2);
+        sharpeEl.textContent = sharpeText;
         sharpeEl.className = 'metric-value';
+        console.log(`  → Updated Sharpe Ratio: ${sharpeText}`);
         // Tooltip already set in HTML with title attribute
     }
 }
@@ -388,10 +410,18 @@ async function pollBacktestStatus(btn) {
                     } else if (status.success) {
                         console.log('✅ Backtest completed:', status.message);
                         alert(`Backtest completed! Found ${status.runs_count} runs.`);
-                        // Reload data to display new backtest results
+                        
+                        // CRITICAL: Reload data in correct order:
+                        // 1. Load all runs from /runs endpoint (populates allRuns)
+                        // 2. Load comparison data for chart display (uses allRuns run_ids)
+                        // 3. Load latest metrics for summary panel (from /runs/latest/metrics)
+                        console.log('→ Reloading backtest data...');
                         await loadData();
-                        // CRITICAL: Refresh metrics to show latest backtest results
+                        
+                        console.log('→ Refreshing performance metrics...');
                         await loadPerformanceMetrics();
+                        
+                        console.log('✅ Dashboard updated with latest backtest results');
                     }
                     
                     btn.textContent = '▶ Run Backtest';
