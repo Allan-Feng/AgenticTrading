@@ -1197,7 +1197,7 @@ body {
 
 .paper-container {
     display: grid;
-    grid-template-columns: 250px 1fr 320px;
+    grid-template-columns: 250px 1fr 332px;
     gap: 12px;
     height: 100%;
     max-height: calc(100vh - 180px);
@@ -1221,12 +1221,23 @@ body {
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    scrollbar-width: none;  /* Hide scrollbar Firefox */
-    -ms-overflow-style: none;  /* Hide scrollbar IE/Edge */
 }
 
 .paper-left-panel > .paper-card:last-child::-webkit-scrollbar {
-    display: none;  /* Hide scrollbar Chrome/Safari */
+    width: 8px;
+}
+
+.paper-left-panel > .paper-card:last-child::-webkit-scrollbar-track {
+    background: var(--bg-card);
+}
+
+.paper-left-panel > .paper-card:last-child::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 4px;
+}
+
+.paper-left-panel > .paper-card:last-child::-webkit-scrollbar-thumb:hover {
+    background: #5a6574;
 }
 
 .paper-center-panel {
@@ -1249,12 +1260,23 @@ body {
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    scrollbar-width: none;  /* Hide scrollbar Firefox */
-    -ms-overflow-style: none;  /* Hide scrollbar IE/Edge */
 }
 
 .paper-right-panel > .paper-card::-webkit-scrollbar {
-    display: none;  /* Hide scrollbar Chrome/Safari */
+    width: 8px;
+}
+
+.paper-right-panel > .paper-card::-webkit-scrollbar-track {
+    background: var(--bg-card);
+}
+
+.paper-right-panel > .paper-card::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 4px;
+}
+
+.paper-right-panel > .paper-card::-webkit-scrollbar-thumb:hover {
+    background: #5a6574;
 }
 
 .paper-card {
@@ -1341,13 +1363,27 @@ body {
     max-height: 280px;
     overflow-y: auto;
     overflow-x: hidden;
-    scrollbar-width: none;  /* Hide scrollbar Firefox */
-    -ms-overflow-style: none;  /* Hide scrollbar IE/Edge */
 }
 
 .positions-list::-webkit-scrollbar,
 .trades-list::-webkit-scrollbar {
-    display: none;  /* Hide scrollbar Chrome/Safari */
+    width: 8px;
+}
+
+.positions-list::-webkit-scrollbar-track,
+.trades-list::-webkit-scrollbar-track {
+    background: var(--bg-card);
+}
+
+.positions-list::-webkit-scrollbar-thumb,
+.trades-list::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 4px;
+}
+
+.positions-list::-webkit-scrollbar-thumb:hover,
+.trades-list::-webkit-scrollbar-thumb:hover {
+    background: #5a6574;
 }
 
 .position-item,
