@@ -392,9 +392,12 @@ async function runBacktest() {
 async function pollBacktestStatus(btn) {
     const maxAttempts = 120; // 2 minutes with 1-second intervals
     let attempts = 0;
+    let isComplete = false;
     
     return new Promise((resolve) => {
         const interval = setInterval(async () => {
+            if (isComplete) return; // Prevent re-entry
+            
             attempts++;
             
             try {
@@ -402,6 +405,7 @@ async function pollBacktestStatus(btn) {
                 const status = await response.json();
                 
                 if (!status.running) {
+                    isComplete = true;
                     clearInterval(interval);
                     
                     if (status.error) {
@@ -431,8 +435,9 @@ async function pollBacktestStatus(btn) {
                 }
                 
                 if (attempts >= maxAttempts) {
+                    isComplete = true;
                     clearInterval(interval);
-                    console.warn('Backtest timeout - still running after 2 minutes');
+                    console.warn('⚠️ Backtest timeout - still running after 2 minutes');
                     btn.textContent = '▶ Run Backtest';
                     btn.disabled = false;
                     resolve();
