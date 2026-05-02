@@ -68,7 +68,8 @@ class AlpacaMarketData:
         Get latest quote for a symbol from Alpaca Data API.
         
         Returns:
-            Dict with keys: symbol, price, change, changePercent, timestamp
+            Dict with keys: symbol, price, changePercent, timestamp
+            changePercent is percentage change vs previous day's close
         """
         try:
             # Use Alpaca Data API endpoint
@@ -83,28 +84,39 @@ class AlpacaMarketData:
                 if "quote" in data:
                     quote = data["quote"]
                     
-                    # Current price: ask price (ap) is most reliable for real-time
-                    price = quote.get("ap") or quote.get("bp") or quote.get("p", 0)
+                    # STEP 1: Get current price using bid/ask midpoint
+                    ap = quote.get("ap")  # Ask price
+                    bp = quote.get("bp")  # Bid price
                     
-                    # Previous close: use 'c' field (previous day's close from Alpaca quote)
-                    prev_close = quote.get("c")
-                    
-                    if not prev_close or prev_close <= 0:
-                        # Fallback if 'c' not available
-                        prev_close = self._get_previous_close(symbol)
-                    
-                    if prev_close and prev_close > 0:
-                        change = price - prev_close
-                        change_percent = (change / prev_close) * 100
+                    if ap and bp:
+                        # Use midpoint of bid/ask
+                        current_price = (ap + bp) / 2
+                    elif ap:
+                        current_price = ap
+                    elif bp:
+                        current_price = bp
                     else:
-                        change = 0
-                        change_percent = 0
+                        # Fallback to last trade price if available
+                        current_price = quote.get("p", None)
+                    
+                    if not current_price or current_price <= 0:
+                        print(f"Could not determine current price for {symbol}")
+                        return None
+                    
+                    # STEP 2: Get previous close from historical daily bars
+                    prev_close = self._get_previous_close(symbol)
+                    
+                    # STEP 3: Calculate % change
+                    if prev_close and prev_close > 0:
+                        change_percent = ((current_price - prev_close) / prev_close) * 100
+                    else:
+                        # If we can't get previous close, return None for change_percent
+                        change_percent = None
                     
                     return {
                         "symbol": symbol,
-                        "price": round(price, 2),
-                        "change": round(change, 2),
-                        "changePercent": round(change_percent, 2),
+                        "price": round(current_price, 2),
+                        "changePercent": round(change_percent, 2) if change_percent is not None else None,
                         "timestamp": datetime.now().isoformat()
                     }
             else:
@@ -116,43 +128,56 @@ class AlpacaMarketData:
             return None
     
     def _get_previous_close(self, symbol: str) -> Optional[float]:
-        """Get previous close price for % change calculation."""
+        """
+        Get previous day's close price from historical daily bars.
+        
+        Returns the close price (field 'c') from the most recent completed trading day.
+        """
         try:
-            # Use Alpaca Data API to get latest bar (includes previous close in quote)
-            url = f"{self.data_api_url}/v2/stocks/{symbol}/quotes/latest"
-            response = requests.get(url, headers=self.headers, timeout=5)
+            from datetime import datetime, timedelta
+            
+            # Fetch last 5 trading days to ensure we get the most recent completed day
+            end_date = datetime.now().strftime("%Y-%m-%d")
+            start_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+            
+            url = f"{self.data_api_url}/v2/stocks/{symbol}/bars"
+            params = {
+                "start": start_date,
+                "end": end_date,
+                "timeframe": "1d",
+                "limit": 5
+            }
+            
+            response = requests.get(url, headers=self.headers, params=params, timeout=5)
             
             if response.status_code == 200:
                 data = response.json()
                 
-                # Try to extract previous close from quote or use bid/ask as fallback
-                if "quote" in data:
-                    quote = data["quote"]
-                    
-                    # Alpaca quote has: ap (ask), bp (bid), p (last), c (close from previous day)
-                    # If not available, try getting from bars endpoint
-                    prev_close = quote.get("pc")  # Previous close
-                    
-                    if prev_close and prev_close > 0:
-                        return float(prev_close)
-                    
-                    # Fallback: use current bid as baseline (assumes market hours)
-                    current_price = quote.get("ap") or quote.get("bp") or quote.get("p")
-                    if current_price:
-                        return float(current_price) * 0.99  # Rough estimate if no prev close
-            
-            # Fallback to historical bars
-            from datetime import datetime, timedelta
-            end_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-            start_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-            
-            url = f"{self.data_api_url}/v2/stocks/{symbol}/bars?start={start_date}&end={end_date}&limit=1&timeframe=1d"
-            response = requests.get(url, headers=self.headers, timeout=5)
-            
-            if response.status_code == 200:
-                data = response.json()
+                # Get all bars and sort by timestamp
                 if "bars" in data and len(data["bars"]) > 0:
-                    return float(data["bars"][-1].get("c", 0))  # Close of previous day
+                    bars = data["bars"]
+                    
+                    # Sort by timestamp descending (most recent first)
+                    bars_sorted = sorted(bars, key=lambda x: x.get("t", ""), reverse=True)
+                    
+                    # Get the most recent bar (could be today or yesterday depending on market hours)
+                    # The 'c' field is the close price for that day
+                    if len(bars_sorted) > 0:
+                        most_recent_close = float(bars_sorted[0].get("c", 0))
+                        
+                        # If current time is after market close (4 PM ET), use today's bar
+                        # Otherwise use yesterday's bar (second most recent)
+                        if len(bars_sorted) > 1:
+                            # Use the bar before the most recent one as "previous close"
+                            # (assuming most recent might be today's incomplete bar)
+                            prev_close = float(bars_sorted[1].get("c", 0))
+                            print(f"DEBUG {symbol}: previous_close={prev_close} (from 2nd most recent bar)")
+                            return prev_close if prev_close > 0 else None
+                        else:
+                            print(f"DEBUG {symbol}: previous_close={most_recent_close} (only one bar available)")
+                            return most_recent_close if most_recent_close > 0 else None
+            else:
+                print(f"Error fetching bars for {symbol}: {response.status_code}")
                     
         except Exception as e:
             print(f"Error getting previous close for {symbol}: {e}")

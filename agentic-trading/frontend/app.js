@@ -100,14 +100,28 @@ function updateTickerDisplay(quotes) {
     let tickerHTML = '';
     
     quotes.forEach(quote => {
-        const changeClass = quote.changePercent >= 0 ? 'positive' : 'negative';
-        const changeSign = quote.changePercent >= 0 ? '+' : '';
+        // Handle missing changePercent
+        let changeDisplay = '--';
+        let changeClass = '';
+        let tooltip = '';
+        
+        if (quote.changePercent !== null && quote.changePercent !== undefined) {
+            const changeSign = quote.changePercent >= 0 ? '+' : '';
+            changeDisplay = `${changeSign}${quote.changePercent.toFixed(2)}%`;
+            changeClass = quote.changePercent >= 0 ? 'positive' : 'negative';
+            
+            // Add tooltip
+            const isCrypto = quote.symbol === 'BTC' || quote.symbol === 'ETH';
+            tooltip = isCrypto ? 'title="24h change"' : 'title="Change vs previous close"';
+        } else {
+            tooltip = 'title="Data unavailable"';
+        }
         
         tickerHTML += `
             <div class="ticker-item">
                 <span class="symbol">${quote.symbol}</span>
                 <span class="price">${quote.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                <span class="change ${changeClass}">${changeSign}${quote.changePercent.toFixed(2)}%</span>
+                <span class="change ${changeClass}" ${tooltip}>${changeDisplay}</span>
                 <svg class="ticker-chart" viewBox="0 0 30 12"><path d="M0,8 L5,6 L10,7 L15,4 L20,5 L25,3 L30,5" stroke="currentColor" fill="none" stroke-width="1"/></svg>
             </div>
         `;
