@@ -64,7 +64,19 @@
                 </div>
 
                 <div class="control-group">
-                    <label>Assets</label>
+                    <label>Task Type</label>
+                    <div class="radio-list">
+                        <label class="radio-item">
+                            <input type="radio" name="taskType" value="algorithmic"> Algorithmic Trading
+                        </label>
+                        <label class="radio-item">
+                            <input type="radio" name="taskType" value="portfolio" checked> Portfolio Management
+                        </label>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Asset Universe</label>
                     <div class="checkbox-list">
                         <label class="checkbox-item">
                             <input type="checkbox" checked> <span>AAPL</span> <span class="company-name">Apple Inc.</span>
@@ -73,10 +85,9 @@
                             <input type="checkbox" checked> <span>MSFT</span> <span class="company-name">Microsoft Corp.</span>
                         </label>
                         <label class="checkbox-item">
-                            <input type="checkbox"> <span>GOOGL</span> <span class="company-name">Alphabet Inc.</span>
+                            <input type="checkbox" checked> <span>GOOGL</span> <span class="company-name">Alphabet Inc.</span>
                         </label>
                     </div>
-                    <button class="add-company-btn">+ Add Asset</button>
                 </div>
 
                 <div class="control-group">
