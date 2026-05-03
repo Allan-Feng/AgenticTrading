@@ -63,6 +63,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // Setup task type and asset selection logic
+    // For Algorithmic Trading: only one asset can be selected
+    // For Portfolio Management: multiple assets can be selected
+    const assetCheckboxes = document.querySelectorAll('.checkbox-list input[type="checkbox"]');
+    assetCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', handleAlgorithmicAssetSelection);
+    });
+
     // Load initial data
     await loadData();
     
@@ -321,6 +329,25 @@ function handleScenario(btn) {
     }
     
     sliders.forEach(updateSliderValue);
+}
+
+/**
+ * Handle asset selection for Algorithmic Trading mode
+ * Only allows one asset to be selected at a time
+ */
+function handleAlgorithmicAssetSelection(e) {
+    const isAlgorithmicSelected = document.querySelector('input[name="taskType"][value="algorithmic"]').checked;
+    
+    if (!isAlgorithmicSelected) return;
+    
+    if (e.target.checked) {
+        // Uncheck all other checkboxes
+        document.querySelectorAll('.checkbox-list input[type="checkbox"]').forEach(checkbox => {
+            if (checkbox !== e.target) {
+                checkbox.checked = false;
+            }
+        });
+    }
 }
 
 /**
