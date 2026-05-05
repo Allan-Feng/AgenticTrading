@@ -83,7 +83,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=False,  # Set to False to allow "*" in headers
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Session-Id"],  # Explicitly list allowed headers
+    allow_headers=["*"],  # Allow all headers (simpler, works around middleware issues)
     expose_headers=["Content-Type", "Cache-Control", "ETag", "X-Session-Id"],
 )
 
