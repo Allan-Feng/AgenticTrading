@@ -81,10 +81,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["Content-Type", "Cache-Control", "ETag"],
+    allow_credentials=False,  # Set to False to allow "*" in headers
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Session-Id"],  # Explicitly list allowed headers
+    expose_headers=["Content-Type", "Cache-Control", "ETag", "X-Session-Id"],
 )
 
 # Add session middleware (selective: backtest routes only)
