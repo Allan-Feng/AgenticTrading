@@ -48,7 +48,7 @@ const API = {
   async request(endpoint, options = {}) {
     const headers = {
       'Content-Type': 'application/json',
-      'X-Session-Id': window.SESSION_ID,
+      'x-session-id': window.SESSION_ID,  // Lowercase to match CORS allow_headers
       ...options.headers,
     };
     
