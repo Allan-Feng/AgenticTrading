@@ -1323,14 +1323,6 @@ function generateMockEquityCurveData() {
             peakDay: 25,
             drawdownDays: [[30, 61]],
             color: '#f43f5e'
-        },
-        'DJIA Buy-and-Hold': {
-            initialValue: 100000,
-            volatility: 0.007,
-            trend: 0.000035,
-            peakDay: 55,
-            drawdownDays: [[20, 25]],
-            color: '#a3a3a3'
         }
     };
     
@@ -1377,10 +1369,10 @@ const MOCK_LEADERBOARD_DATA = [
         cumulative_return: 0.1247,
         sharpe_ratio: 1.86,
         win_loss_ratio: 1.72,
-        rank_cr: 2,
+        rank_cr: 1,
         rank_sr: 1,
         rank_wl: 1,
-        final_score: 1.33,
+        final_score: 1.00,
         status: 'Live'
     },
     {
@@ -1392,10 +1384,10 @@ const MOCK_LEADERBOARD_DATA = [
         cumulative_return: 0.0921,
         sharpe_ratio: 1.32,
         win_loss_ratio: 1.58,
-        rank_cr: 3,
+        rank_cr: 2,
         rank_sr: 2,
         rank_wl: 2,
-        final_score: 2.33,
+        final_score: 2.00,
         status: 'Live'
     },
     {
@@ -1407,10 +1399,10 @@ const MOCK_LEADERBOARD_DATA = [
         cumulative_return: 0.0634,
         sharpe_ratio: 1.21,
         win_loss_ratio: 1.41,
-        rank_cr: 4,
+        rank_cr: 3,
         rank_sr: 3,
         rank_wl: 3,
-        final_score: 3.33,
+        final_score: 3.00,
         status: 'Live'
     },
     {
@@ -1422,10 +1414,10 @@ const MOCK_LEADERBOARD_DATA = [
         cumulative_return: 0.0372,
         sharpe_ratio: 0.98,
         win_loss_ratio: 1.36,
-        rank_cr: 6,
+        rank_cr: 4,
         rank_sr: 4,
         rank_wl: 4,
-        final_score: 4.67,
+        final_score: 4.00,
         status: 'Live'
     },
     {
@@ -1437,10 +1429,10 @@ const MOCK_LEADERBOARD_DATA = [
         cumulative_return: 0.0118,
         sharpe_ratio: 0.65,
         win_loss_ratio: 1.29,
-        rank_cr: 7,
-        rank_sr: 6,
+        rank_cr: 5,
+        rank_sr: 5,
         rank_wl: 5,
-        final_score: 6.00,
+        final_score: 5.00,
         status: 'Live'
     },
     {
@@ -1452,10 +1444,10 @@ const MOCK_LEADERBOARD_DATA = [
         cumulative_return: -0.0045,
         sharpe_ratio: 0.31,
         win_loss_ratio: 1.18,
-        rank_cr: 8,
-        rank_sr: 7,
+        rank_cr: 6,
+        rank_sr: 6,
         rank_wl: 6,
-        final_score: 7.00,
+        final_score: 6.00,
         status: 'Live'
     },
     {
@@ -1467,56 +1459,11 @@ const MOCK_LEADERBOARD_DATA = [
         cumulative_return: -0.0231,
         sharpe_ratio: 0.12,
         win_loss_ratio: 0.93,
-        rank_cr: 9,
-        rank_sr: 8,
+        rank_cr: 7,
+        rank_sr: 7,
         rank_wl: 7,
-        final_score: 8.00,
+        final_score: 7.00,
         status: 'Live'
-    },
-    {
-        rank: 8,
-        team_name: 'OpenClaw Baseline',
-        team_badge: 'BASELINE',
-        model: 'OpenAI Baseline Agent',
-        portfolio_value: 96875.12,
-        cumulative_return: -0.0312,
-        sharpe_ratio: -0.05,
-        win_loss_ratio: 0.78,
-        rank_cr: 10,
-        rank_sr: 9,
-        rank_wl: 8,
-        final_score: 9.00,
-        status: 'Baseline'
-    },
-    {
-        rank: 9,
-        team_name: 'DJIA Buy-and-Hold',
-        team_badge: 'BASELINE',
-        model: 'SPY Buy-and-Hold',
-        portfolio_value: 101860.50,
-        cumulative_return: 0.0186,
-        sharpe_ratio: 0.92,
-        win_loss_ratio: 1.15,
-        rank_cr: 5,
-        rank_sr: 5,
-        rank_wl: 10,
-        final_score: 6.67,
-        status: 'Baseline'
-    },
-    {
-        rank: 10,
-        team_name: 'SPY Buy-and-Hold',
-        team_badge: 'BASELINE',
-        model: 'SPY Buy-and-Hold',
-        portfolio_value: 102650.00,
-        cumulative_return: 0.0265,
-        sharpe_ratio: 1.15,
-        win_loss_ratio: 1.25,
-        rank_cr: 1,
-        rank_sr: 10,
-        rank_wl: 9,
-        final_score: 6.67,
-        status: 'Baseline'
     }
 ];
 
@@ -1747,7 +1694,6 @@ function getTeamColorConfig(teamName) {
         'QuantNebula': { color: '#f472b6', bgColor: 'rgba(244, 114, 182, 0.15)' },        // Bright Pink
         'CashGuard': { color: '#bef264', bgColor: 'rgba(190, 242, 100, 0.15)' },          // Bright Lime
         'DeltaVector': { color: '#ff6b7a', bgColor: 'rgba(255, 107, 122, 0.15)' },        // Bright Red
-        'DJIA Buy-and-Hold': { color: '#d1d5db', bgColor: 'rgba(209, 213, 219, 0.15)' },  // Bright Gray
     };
     return colors[teamName] || { color: '#818cf8', bgColor: 'rgba(129, 140, 248, 0.15)' };
 }
