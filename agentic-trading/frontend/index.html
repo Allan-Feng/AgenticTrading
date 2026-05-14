@@ -425,24 +425,16 @@
                 </div>
             </div>
 
-            <!-- Controls: Filters & View Buttons -->
-            <div class="chart-controls-bar compact">
+            <!-- Controls: Simple Filters & View Toggle (nof1.ai style) -->
+            <div class="chart-controls-bar compact minimal">
                 <div class="filter-tabs compact">
                     <button class="filter-tab compact active" data-filter="all">All Teams</button>
                     <button class="filter-tab compact" data-filter="top10">Top 10</button>
-                    <button class="filter-tab compact" data-filter="top20">Top 20</button>
-                    <button class="filter-tab compact" data-filter="my-team">My Team</button>
-                    <button class="filter-tab compact" data-filter="baselines">Baselines</button>
-                    <button class="filter-tab compact" data-filter="live">Live Only</button>
                 </div>
 
-                <div class="view-buttons compact">
-                    <button class="chart-view-btn compact active" data-view="cumulative" title="Cumulative Return %">Return %</button>
-                    <button class="chart-view-btn compact" data-view="absolute" title="Absolute Value">Value $</button>
-                    <button class="chart-view-btn compact" data-view="drawdown" title="Max Drawdown">Drawdown</button>
-                    <label class="log-scale-checkbox compact">
-                        <input type="checkbox" id="logScaleToggle"> Log Scale
-                    </label>
+                <div class="view-toggle compact">
+                    <button class="view-toggle-btn compact active" data-view="cumulative">%</button>
+                    <button class="view-toggle-btn compact" data-view="absolute">$</button>
                 </div>
             </div>
 

@@ -1779,6 +1779,17 @@ function transformChartData(curveValues, viewType) {
  * Initialize chart view controls
  */
 function initChartControls() {
+    // View toggle (% or $)
+    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            currentChartView = e.target.dataset.view;
+            await renderEquityCurvesChart();
+        });
+    });
+    
+    // Legacy support for old buttons (if they exist)
     document.querySelectorAll('.chart-view-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             document.querySelectorAll('.chart-view-btn').forEach(b => b.classList.remove('active'));
@@ -1787,14 +1798,6 @@ function initChartControls() {
             await renderEquityCurvesChart();
         });
     });
-    
-    const logToggle = document.getElementById('logScaleToggle');
-    if (logToggle) {
-        logToggle.addEventListener('change', async (e) => {
-            // TODO: Implement log scale toggle in Chart.js
-            console.log('Log scale:', e.target.checked);
-        });
-    }
 }
 
 /**

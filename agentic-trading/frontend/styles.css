@@ -1614,6 +1614,11 @@ body {
     flex-wrap: wrap;
 }
 
+.chart-controls-bar.compact.minimal {
+    gap: 16px;
+    justify-content: space-between;
+}
+
 .filter-tabs,
 .metric-tabs {
     display: flex;
@@ -2284,6 +2289,51 @@ body {
 .log-scale-checkbox.compact input[type="checkbox"] {
     width: 12px;
     height: 12px;
+}
+
+/* View Toggle ($ / % switch) */
+.view-toggle {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.view-toggle.compact {
+    gap: 0;
+}
+
+.view-toggle-btn {
+    background-color: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-right: 1px solid var(--border-color);
+}
+
+.view-toggle-btn.compact {
+    padding: 5px 10px;
+    font-size: 11px;
+}
+
+.view-toggle-btn:last-child {
+    border-right: none;
+}
+
+.view-toggle-btn:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.view-toggle-btn.active {
+    background-color: var(--neutral-color);
+    color: white;
+    border-color: var(--neutral-color);
 }
 
 .chart-container {
