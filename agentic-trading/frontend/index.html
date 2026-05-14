@@ -456,7 +456,7 @@
                     <div class="chart-hint">Click legend to highlight teams • Hover for values</div>
                 </section>
 
-                <!-- Right: Compact Sidebar -->
+                <!-- Right: Rules Only -->
                 <aside class="leaderboard-sidebar compact">
                     <!-- Ranking Rules -->
                     <div class="sidebar-card compact">
@@ -470,64 +470,50 @@
                             </ul>
                         </div>
                     </div>
+                </aside>
+            </div>
 
-                    <!-- Selected Team Detail -->
+            <!-- Compact Rankings Table + Team Detail -->
+            <div class="leaderboard-bottom compact">
+                <!-- Left: Table -->
+                <section class="leaderboard-table-section compact">
+                    <div class="table-header compact">
+                        <h3>📊 Official Rankings</h3>
+                        <span class="update-indicator">Updates every 60s</span>
+                    </div>
+                    <div class="table-wrapper compact">
+                        <table class="leaderboard-table compact">
+                            <thead>
+                                <tr>
+                                    <th class="rank-col">Rank</th>
+                                    <th class="name-col">Team Name</th>
+                                    <th class="model-col">Model</th>
+                                    <th class="portfolio-col">Value</th>
+                                    <th class="return-col">Return</th>
+                                    <th class="sharpe-col">Sharpe</th>
+                                    <th class="wl-col">W/L</th>
+                                    <th class="ranks-col">Ranks</th>
+                                    <th class="score-col">Score</th>
+                                    <th class="status-col">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboardTableBody">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Right: Team Detail -->
+                <aside class="leaderboard-table-sidebar compact">
                     <div class="sidebar-card compact">
                         <h3 class="sidebar-title compact">📊 Team</h3>
                         <div id="selectedTeamDetail" class="team-detail compact">
                             <div class="no-selection">Click team</div>
                         </div>
                     </div>
-
-                    <!-- Competition Feed -->
-                    <div class="sidebar-card compact">
-                        <h3 class="sidebar-title compact">📢 Feed</h3>
-                        <div class="feed-items compact">
-                            <div class="feed-item compact">
-                                <span class="feed-time">15:40</span>
-                                <span class="feed-text">AlphaForge lead</span>
-                            </div>
-                            <div class="feed-item compact">
-                                <span class="feed-time">15:41</span>
-                                <span class="feed-text">SignalWeaver high</span>
-                            </div>
-                            <div class="feed-item compact">
-                                <span class="feed-time">15:38</span>
-                                <span class="feed-text">MarketMinds rank 4</span>
-                            </div>
-                        </div>
-                    </div>
                 </aside>
             </div>
-
-            <!-- Compact Rankings Table -->
-            <section class="leaderboard-table-section compact">
-                <div class="table-header compact">
-                    <h3>📊 Official Rankings</h3>
-                    <span class="update-indicator">Updates every 60s</span>
-                </div>
-                <div class="table-wrapper compact">
-                    <table class="leaderboard-table compact">
-                        <thead>
-                            <tr>
-                                <th class="rank-col">Rank</th>
-                                <th class="name-col">Team Name</th>
-                                <th class="model-col">Model</th>
-                                <th class="portfolio-col">Value</th>
-                                <th class="return-col">Return</th>
-                                <th class="sharpe-col">Sharpe</th>
-                                <th class="wl-col">W/L</th>
-                                <th class="ranks-col">Ranks</th>
-                                <th class="score-col">Score</th>
-                                <th class="status-col">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="leaderboardTableBody">
-                            <!-- Populated by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
         </div>
     </div>
 

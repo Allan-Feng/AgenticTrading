@@ -1514,7 +1514,7 @@ body {
 }
 
 .leaderboard-container.compact {
-    gap: 12px;
+    gap: 10px;
     padding: 12px;
     height: auto;
     overflow-y: auto;
@@ -1723,6 +1723,17 @@ body {
     color: var(--text-muted);
 }
 
+/* Leaderboard Bottom Section (Table + Team Detail) */
+.leaderboard-bottom {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 12px;
+}
+
+.leaderboard-bottom.compact {
+    gap: 8px;
+}
+
 /* Leaderboard Table Section */
 .leaderboard-table-section {
     display: flex;
@@ -1739,6 +1750,18 @@ body {
     padding: 8px;
     border-radius: 6px;
     min-height: auto;
+}
+
+/* Table Sidebar (beside rankings table) */
+.leaderboard-table-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.leaderboard-table-sidebar.compact {
+    gap: 8px;
+    min-width: 260px;
 }
 
 .table-header {
@@ -2293,6 +2316,14 @@ body {
     .leaderboard-sidebar.compact {
         min-width: 240px;
     }
+    
+    .leaderboard-bottom.compact {
+        grid-template-columns: 1fr 240px;
+    }
+    
+    .leaderboard-table-sidebar.compact {
+        min-width: 240px;
+    }
 }
 
 @media (max-width: 1200px) {
@@ -2301,6 +2332,14 @@ body {
     }
     
     .leaderboard-sidebar.compact {
+        display: none;
+    }
+    
+    .leaderboard-bottom.compact {
+        grid-template-columns: 1fr;
+    }
+    
+    .leaderboard-table-sidebar.compact {
         display: none;
     }
     
