@@ -1324,6 +1324,15 @@ function generateMockEquityCurveData() {
             drawdownDays: [[30, 61]],
             color: '#f43f5e'
         },
+        'OpenClaw Baseline': {
+            initialValue: 100000,
+            volatility: 0.009,
+            trend: -0.00008,
+            peakDay: 20,
+            drawdownDays: [[25, 61]],
+            color: '#a1a1a1',
+            isBaseline: true
+        },
         'DJIA Buy-and-Hold': {
             initialValue: 100000,
             volatility: 0.007,
@@ -1485,13 +1494,13 @@ const MOCK_LEADERBOARD_DATA = [
     },
     {
         rank: 8,
-        team_name: 'DJIA Buy-and-Hold',
+        team_name: 'OpenClaw Baseline',
         team_badge: 'BASELINE',
-        model: 'Buy-and-Hold Baseline',
-        portfolio_value: 101860.50,
-        cumulative_return: 0.0186,
-        sharpe_ratio: 0.92,
-        win_loss_ratio: 1.15,
+        model: 'OpenAI Baseline Agent',
+        portfolio_value: 96875.12,
+        cumulative_return: -0.0312,
+        sharpe_ratio: -0.05,
+        win_loss_ratio: 0.78,
         rank_cr: 8,
         rank_sr: 8,
         rank_wl: 8,
@@ -1500,6 +1509,21 @@ const MOCK_LEADERBOARD_DATA = [
     },
     {
         rank: 9,
+        team_name: 'DJIA Buy-and-Hold',
+        team_badge: 'BASELINE',
+        model: 'Buy-and-Hold Baseline',
+        portfolio_value: 101860.50,
+        cumulative_return: 0.0186,
+        sharpe_ratio: 0.92,
+        win_loss_ratio: 1.15,
+        rank_cr: 9,
+        rank_sr: 9,
+        rank_wl: 9,
+        final_score: 9.00,
+        status: 'Baseline'
+    },
+    {
+        rank: 10,
         team_name: 'SPY Buy-and-Hold',
         team_badge: 'BASELINE',
         model: 'Buy-and-Hold Baseline',
@@ -1507,10 +1531,10 @@ const MOCK_LEADERBOARD_DATA = [
         cumulative_return: 0.0265,
         sharpe_ratio: 1.15,
         win_loss_ratio: 1.25,
-        rank_cr: 9,
-        rank_sr: 9,
-        rank_wl: 9,
-        final_score: 9.00,
+        rank_cr: 10,
+        rank_sr: 10,
+        rank_wl: 10,
+        final_score: 10.00,
         status: 'Baseline'
     }
 ];
@@ -1745,6 +1769,7 @@ function getTeamColorConfig(teamName) {
         'QuantNebula': { color: '#f472b6', bgColor: 'rgba(244, 114, 182, 0.15)' },        // Bright Pink
         'CashGuard': { color: '#bef264', bgColor: 'rgba(190, 242, 100, 0.15)' },          // Bright Lime
         'DeltaVector': { color: '#ff6b7a', bgColor: 'rgba(255, 107, 122, 0.15)' },        // Bright Red
+        'OpenClaw Baseline': { color: '#a1a1a1', bgColor: 'rgba(161, 161, 161, 0.15)' },  // Medium Gray (Baseline)
         'DJIA Buy-and-Hold': { color: '#9ca3af', bgColor: 'rgba(156, 163, 175, 0.15)' },  // Gray (Baseline)
         'SPY Buy-and-Hold': { color: '#d1d5db', bgColor: 'rgba(209, 213, 219, 0.15)' },   // Light Gray (Baseline)
     };
