@@ -1514,10 +1514,28 @@ body {
 }
 
 .leaderboard-container.compact {
-    gap: 10px;
-    padding: 12px;
+    gap: 6px;
+    padding: 10px;
     height: auto;
     overflow-y: auto;
+}
+
+/* Combined Header Bar (Stats + Controls) */
+.leaderboard-header-bar {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.leaderboard-header-bar.compact {
+    padding: 6px 10px;
+    border-radius: 6px;
+    gap: 12px;
 }
 
 /* Header Stats Section */
@@ -1541,7 +1559,8 @@ body {
 
 .header-stats.compact {
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
+    gap: 8px;
+    flex: 0 0 auto;
 }
 
 .stat-item {
@@ -1584,6 +1603,18 @@ body {
 
 .stat-item.compact .stat-subtext {
     display: none;
+}
+
+/* Header Controls (in combined bar) */
+.header-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.header-controls.compact {
+    gap: 8px;
 }
 
 /* Control & Filter Tabs */
@@ -1702,12 +1733,12 @@ body {
 .leaderboard-main {
     display: grid;
     grid-template-columns: 1fr 280px;
-    gap: 12px;
+    gap: 8px;
     min-height: 300px;
 }
 
 .leaderboard-main.compact {
-    gap: 8px;
+    gap: 6px;
     min-height: auto;
     max-height: 380px;
 }
@@ -1720,11 +1751,11 @@ body {
 .chart-section {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 6px;
-    padding: 8px;
+    padding: 6px;
 }
 
 .chart-section.full-width {
@@ -1733,19 +1764,20 @@ body {
 
 .chart-hint {
     text-align: center;
-    font-size: 10px;
+    font-size: 9px;
     color: var(--text-muted);
+    margin-top: -2px;
 }
 
 /* Leaderboard Bottom Section (Table + Sidebars) */
 .leaderboard-bottom {
     display: grid;
     grid-template-columns: 1fr 300px;
-    gap: 12px;
+    gap: 8px;
 }
 
 .leaderboard-bottom.compact {
-    gap: 8px;
+    gap: 6px;
     grid-template-columns: 1fr 300px;
 }
 
@@ -2354,7 +2386,7 @@ body {
 }
 
 .leaderboard-main.compact.full-width .chart-container.medium {
-    height: 420px;
+    height: 360px;
 }
 
 .chart-container canvas {

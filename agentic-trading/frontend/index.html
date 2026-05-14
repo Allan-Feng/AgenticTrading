@@ -403,8 +403,9 @@
     <!-- Leaderboard View (Hidden by default, shown when Leaderboard tab selected) -->
     <div id="leaderboardView" class="leaderboard-view" style="display: none;">
         <div class="leaderboard-container compact">
-            <!-- Compact Header Section with Stats -->
-            <div class="leaderboard-header compact">
+            <!-- Combined Header with Stats + Controls -->
+            <div class="leaderboard-header-bar compact">
+                <!-- Left: Stats -->
                 <div class="header-stats compact">
                     <div class="stat-item compact">
                         <span class="stat-label">Teams</span>
@@ -423,18 +424,18 @@
                         <span class="stat-value" id="leaderTeam">AlphaForge</span>
                     </div>
                 </div>
-            </div>
 
-            <!-- Controls: Simple Filters & View Toggle (nof1.ai style) -->
-            <div class="chart-controls-bar compact minimal">
-                <div class="filter-tabs compact">
-                    <button class="filter-tab compact active" data-filter="all">All Teams</button>
-                    <button class="filter-tab compact" data-filter="top10">Top 10</button>
-                </div>
+                <!-- Right: Controls -->
+                <div class="header-controls compact">
+                    <div class="filter-tabs compact">
+                        <button class="filter-tab compact active" data-filter="all">All Teams</button>
+                        <button class="filter-tab compact" data-filter="top10">Top 10</button>
+                    </div>
 
-                <div class="view-toggle compact">
-                    <button class="view-toggle-btn compact active" data-view="cumulative">%</button>
-                    <button class="view-toggle-btn compact" data-view="absolute">$</button>
+                    <div class="view-toggle compact">
+                        <button class="view-toggle-btn compact active" data-view="cumulative">%</button>
+                        <button class="view-toggle-btn compact" data-view="absolute">$</button>
+                    </div>
                 </div>
             </div>
 
