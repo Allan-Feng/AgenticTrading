@@ -446,34 +446,18 @@
                 </div>
             </div>
 
-            <!-- Main Content: Chart + Compact Sidebar -->
-            <div class="leaderboard-main compact">
-                <!-- Left: Large Chart -->
-                <section class="chart-section">
+            <!-- Main Content: Chart (Full Width) -->
+            <div class="leaderboard-main compact full-width">
+                <!-- Chart -->
+                <section class="chart-section full-width">
                     <div class="chart-container medium">
                         <canvas id="equityCurvesChart"></canvas>
                     </div>
                     <div class="chart-hint">Click legend to highlight teams • Hover for values</div>
                 </section>
-
-                <!-- Right: Rules Only -->
-                <aside class="leaderboard-sidebar compact">
-                    <!-- Ranking Rules -->
-                    <div class="sidebar-card compact">
-                        <h3 class="sidebar-title compact">⚖️ Rules</h3>
-                        <div class="ranking-formula compact">
-                            <p class="formula-compact">Final Score = (rCR + rSR + rWL) / 3</p>
-                            <ul class="formula-items compact">
-                                <li>rCR = Return</li>
-                                <li>rSR = Sharpe</li>
-                                <li>rWL = W/L</li>
-                            </ul>
-                        </div>
-                    </div>
-                </aside>
             </div>
 
-            <!-- Compact Rankings Table + Team Detail -->
+            <!-- Compact Rankings Table + Sidebars -->
             <div class="leaderboard-bottom compact">
                 <!-- Left: Table -->
                 <section class="leaderboard-table-section compact">
@@ -504,8 +488,22 @@
                     </div>
                 </section>
 
-                <!-- Right: Team Detail -->
+                <!-- Right: Rules + Team Detail -->
                 <aside class="leaderboard-table-sidebar compact">
+                    <!-- Ranking Rules -->
+                    <div class="sidebar-card compact">
+                        <h3 class="sidebar-title compact">⚖️ Rules</h3>
+                        <div class="ranking-formula compact">
+                            <p class="formula-compact">Final Score = (rCR + rSR + rWL) / 3</p>
+                            <ul class="formula-items compact">
+                                <li>rCR = Return</li>
+                                <li>rSR = Sharpe</li>
+                                <li>rWL = W/L</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Team Detail -->
                     <div class="sidebar-card compact">
                         <h3 class="sidebar-title compact">📊 Team</h3>
                         <div id="selectedTeamDetail" class="team-detail compact">

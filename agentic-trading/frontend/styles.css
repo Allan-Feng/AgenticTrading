@@ -1707,6 +1707,11 @@ body {
     max-height: 380px;
 }
 
+.leaderboard-main.compact.full-width {
+    grid-template-columns: 1fr;
+    max-height: none;
+}
+
 .chart-section {
     display: flex;
     flex-direction: column;
@@ -1717,21 +1722,26 @@ body {
     padding: 8px;
 }
 
+.chart-section.full-width {
+    width: 100%;
+}
+
 .chart-hint {
     text-align: center;
     font-size: 10px;
     color: var(--text-muted);
 }
 
-/* Leaderboard Bottom Section (Table + Team Detail) */
+/* Leaderboard Bottom Section (Table + Sidebars) */
 .leaderboard-bottom {
     display: grid;
-    grid-template-columns: 1fr 280px;
+    grid-template-columns: 1fr 300px;
     gap: 12px;
 }
 
 .leaderboard-bottom.compact {
     gap: 8px;
+    grid-template-columns: 1fr 300px;
 }
 
 /* Leaderboard Table Section */
@@ -1760,8 +1770,10 @@ body {
 }
 
 .leaderboard-table-sidebar.compact {
-    gap: 8px;
-    min-width: 260px;
+    gap: 6px;
+    min-width: 300px;
+    max-height: 500px;
+    overflow-y: auto;
 }
 
 .table-header {
@@ -2287,8 +2299,12 @@ body {
 }
 
 .chart-container.medium {
-    height: 320px;
+    height: 380px;
     padding: 6px;
+}
+
+.leaderboard-main.compact.full-width .chart-container.medium {
+    height: 420px;
 }
 
 .chart-container canvas {
@@ -2310,19 +2326,19 @@ body {
 /* Responsive Design */
 @media (max-width: 1600px) {
     .leaderboard-main.compact {
-        grid-template-columns: 1fr 240px;
+        grid-template-columns: 1fr;
     }
     
-    .leaderboard-sidebar.compact {
-        min-width: 240px;
+    .leaderboard-main.compact.full-width {
+        grid-template-columns: 1fr;
     }
     
     .leaderboard-bottom.compact {
-        grid-template-columns: 1fr 240px;
+        grid-template-columns: 1fr 260px;
     }
     
     .leaderboard-table-sidebar.compact {
-        min-width: 240px;
+        min-width: 260px;
     }
 }
 
