@@ -513,6 +513,276 @@ body {
     margin-left: auto;
 }
 
+.custom-assets {
+    padding: 8px 0;
+    border-top: 1px solid var(--border-color);
+    margin-top: 8px;
+}
+
+/* ============================================================================
+   ASSET UNIVERSE INTERFACE
+   ============================================================================ */
+
+.control-helper {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    margin-top: -4px;
+}
+
+.universe-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.universe-tab {
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.universe-tab:hover {
+    color: var(--text-primary);
+}
+
+.universe-tab.active {
+    color: var(--info-color);
+    border-bottom-color: var(--info-color);
+}
+
+.universe-content {
+    display: none;
+}
+
+.universe-content.active {
+    display: block;
+}
+
+/* Preset Cards */
+.preset-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.preset-card {
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    background-color: var(--bg-card);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 180px;
+}
+
+.preset-card:hover {
+    border-color: var(--info-color);
+    background-color: var(--bg-hover);
+}
+
+.preset-card.selected {
+    border-color: var(--info-color);
+    background-color: rgba(0, 191, 255, 0.08);
+}
+
+.preset-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.preset-desc {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.preset-btn {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: transparent;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+    margin-top: auto;
+}
+
+.preset-btn:hover {
+    border-color: var(--info-color);
+    color: var(--info-color);
+}
+
+.preset-card.selected .preset-btn {
+    background-color: var(--info-color);
+    border-color: var(--info-color);
+    color: #0a0e27;
+}
+
+.preset-card.selected .preset-btn:hover {
+    opacity: 0.8;
+}
+
+/* Custom Universe Builder */
+.custom-universe {
+    background-color: var(--bg-card);
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.custom-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.search-input-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    position: relative;
+}
+
+.search-asset-input {
+    flex: 1;
+    padding: 8px 12px;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 12px;
+    transition: all 0.15s;
+}
+
+.search-asset-input:focus {
+    outline: none;
+    border-color: var(--info-color);
+}
+
+.search-asset-input::placeholder {
+    color: var(--text-muted);
+}
+
+.asset-autocomplete {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 60px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--info-color);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 10;
+    margin-top: -1px;
+}
+
+.autocomplete-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    transition: all 0.15s;
+}
+
+.autocomplete-option:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-option:hover {
+    background-color: var(--bg-hover);
+}
+
+.autocomplete-option strong {
+    color: var(--info-color);
+    font-weight: 600;
+}
+
+.add-asset-btn {
+    padding: 8px 12px;
+    background-color: var(--info-color);
+    border: none;
+    border-radius: 4px;
+    color: #0a0e27;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.add-asset-btn:hover {
+    opacity: 0.8;
+}
+
+.selected-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+    min-height: 32px;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background-color: var(--bg-hover);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 11px;
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.chip-ticker {
+    color: var(--info-color);
+    font-weight: 600;
+}
+
+.chip-remove {
+    color: var(--text-muted);
+    cursor: pointer;
+    font-weight: 700;
+    transition: all 0.15s;
+}
+
+.chip-remove:hover {
+    color: var(--danger-color);
+}
+
+.chips-helper {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.universe-spacing {
+    margin-top: 8px;
+}
+
 .add-company-btn {
     width: 100%;
     padding: 5px;

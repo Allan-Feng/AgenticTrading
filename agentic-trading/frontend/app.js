@@ -162,12 +162,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Setup task type and asset selection logic
-    // For Algorithmic Trading: only one asset can be selected
-    // For Portfolio Management: multiple assets can be selected
-    const assetCheckboxes = document.querySelectorAll('.checkbox-list input[type="checkbox"]');
-    assetCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', handleAlgorithmicAssetSelection);
+    // Setup universe tabs
+    document.querySelectorAll('.universe-tab').forEach(tab => {
+        tab.addEventListener('click', (e) => handleUniverseTabSwitch(e.target));
+    });
+    
+    // Setup preset cards
+    document.getElementById('djiaCard').addEventListener('click', () => selectPreset('djia'));
+    document.getElementById('mag7Card').addEventListener('click', () => selectPreset('mag7'));
+    
+    // Setup custom universe builder
+    setupAssetSearch();
+    
+    const addAssetBtn = document.querySelector('.add-asset-btn');
+    if (addAssetBtn) {
+        addAssetBtn.addEventListener('click', handleAddAsset);
+    }
+    
+    const searchInput = document.getElementById('assetSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleAddAsset();
+        });
+    }
+    
+    // Setup chip removal
+    document.querySelectorAll('.chip-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => removeChip(e.target.closest('.chip')));
     });
 
     // Load initial data
@@ -421,28 +442,275 @@ function handleScenario(btn) {
     sliders.forEach(updateSliderValue);
 }
 
+
 /**
- * Handle asset selection for Algorithmic Trading mode
- * Only allows one asset to be selected at a time
+ * Asset Universe Builder - Preset & Custom
  */
-function handleAlgorithmicAssetSelection(e) {
-    const isAlgorithmicSelected = document.querySelector('input[name="taskType"][value="algorithmic"]').checked;
-    
-    if (!isAlgorithmicSelected) return;
-    
-    if (e.target.checked) {
-        // Uncheck all other checkboxes
-        document.querySelectorAll('.checkbox-list input[type="checkbox"]').forEach(checkbox => {
-            if (checkbox !== e.target) {
-                checkbox.checked = false;
-            }
-        });
+
+// Asset universe definitions
+const ASSET_UNIVERSES = {
+    djia: {
+        name: 'DJIA',
+        assets: ['AAPL', 'MSFT', 'JPM', 'JNJ', 'V', 'PG', 'MRK', 'DIS', 'BA', 'HD', 'KO', 'AXP', 'GE', 'IBM', 'INTC']
+    },
+    mag7: {
+        name: 'Magnificent 7',
+        assets: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META']
     }
+};
+
+// Popular stocks for autocomplete
+// S&P 100 stocks
+const POPULAR_STOCKS = {
+    'AAPL': 'Apple Inc.',
+    'MSFT': 'Microsoft Corp.',
+    'GOOGL': 'Alphabet Inc.',
+    'AMZN': 'Amazon Inc.',
+    'NVDA': 'NVIDIA Corp.',
+    'TSLA': 'Tesla Inc.',
+    'META': 'Meta Platforms',
+    'BRK.B': 'Berkshire Hathaway',
+    'JPM': 'JPMorgan Chase',
+    'JNJ': 'Johnson & Johnson',
+    'V': 'Visa Inc.',
+    'WMT': 'Walmart Inc.',
+    'PG': 'Procter & Gamble',
+    'UNH': 'UnitedHealth Group',
+    'HD': 'Home Depot',
+    'MA': 'Mastercard',
+    'DIS': 'Walt Disney',
+    'PYPL': 'PayPal Inc.',
+    'ADBE': 'Adobe Inc.',
+    'CRM': 'Salesforce Inc.',
+    'NFLX': 'Netflix Inc.',
+    'BA': 'Boeing Co.',
+    'KO': 'Coca-Cola Co.',
+    'IBM': 'IBM Corp.',
+    'INTC': 'Intel Corp.',
+    'AMD': 'Advanced Micro Devices',
+    'CSCO': 'Cisco Systems',
+    'QCOM': 'Qualcomm',
+    'VZ': 'Verizon Communications',
+    'T': 'AT&T Inc.',
+    'CAT': 'Caterpillar Inc.',
+    'HON': 'Honeywell International',
+    'MMM': '3M Company',
+    'GE': 'General Electric',
+    'AXP': 'American Express',
+    'MCD': 'McDonalds Corp.',
+    'PEP': 'PepsiCo Inc.',
+    'KMB': 'Kimberly-Clark',
+    'CL': 'Colgate-Palmolive',
+    'SYK': 'Stryker Corporation',
+    'LMT': 'Lockheed Martin',
+    'PLD': 'Prologis Inc.',
+    'AMT': 'American Tower',
+    'PSA': 'Public Storage',
+    'O': 'Realty Income',
+    'DUK': 'Duke Energy',
+    'SO': 'Southern Company',
+    'NEE': 'NextEra Energy',
+    'SCHW': 'Charles Schwab',
+    'SPGI': 'S&P Global',
+    'MCK': 'McKesson Corp.',
+    'BX': 'Blackstone Inc.',
+    'AIG': 'American International Group',
+    'GD': 'General Dynamics',
+    'LUV': 'Southwest Airlines',
+    'UAL': 'United Airlines',
+    'DAL': 'Delta Air Lines',
+    'AAL': 'American Airlines',
+    'COST': 'Costco Wholesale',
+    'ABBV': 'AbbVie Inc.',
+    'GILD': 'Gilead Sciences',
+    'ISRG': 'Intuitive Surgical',
+    'VEEV': 'Veeva Systems',
+    'CRWD': 'CrowdStrike',
+    'MU': 'Micron Technology',
+    'AVGO': 'Broadcom Inc.',
+    'INTU': 'Intuit Inc.',
+    'AMAT': 'Applied Materials',
+    'LRCX': 'Lam Research',
+    'SNPS': 'Synopsys',
+    'CDNS': 'Cadence Design',
+    'NOW': 'ServiceNow',
+    'SPLK': 'Splunk',
+    'OKTA': 'Okta Inc.',
+    'ZM': 'Zoom Video',
+    'DOCU': 'DocuSign',
+    'TWLO': 'Twilio',
+    'DDOG': 'Datadog',
+    'SNOW': 'Snowflake Inc.',
+};
+
+let selectedUniverse = 'djia'; // Default
+
+function handleUniverseTabSwitch(tab) {
+    const tabName = tab.dataset.tab;
+    
+    // Update tab buttons
+    document.querySelectorAll('.universe-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    
+    // Update content visibility explicitly
+    const builtinTab = document.getElementById('builtinTab');
+    const customTab = document.getElementById('customTab');
+    
+    if (tabName === 'builtin') {
+        builtinTab.classList.add('active');
+        builtinTab.style.display = 'block';
+        customTab.classList.remove('active');
+        customTab.style.display = 'none';
+    } else {
+        builtinTab.classList.remove('active');
+        builtinTab.style.display = 'none';
+        customTab.classList.add('active');
+        customTab.style.display = 'block';
+    }
+    
+    console.log(`📊 Switched to ${tabName} universe tab`);
+}
+
+function selectPreset(preset) {
+    selectedUniverse = preset;
+    
+    // Update card styles and button text
+    document.getElementById('djiaCard').classList.remove('selected');
+    document.getElementById('mag7Card').classList.remove('selected');
+    
+    if (preset === 'djia') {
+        document.getElementById('djiaCard').classList.add('selected');
+        document.getElementById('djiaCard').querySelector('.preset-btn').textContent = 'Selected';
+        document.getElementById('mag7Card').querySelector('.preset-btn').textContent = 'Select';
+    } else if (preset === 'mag7') {
+        document.getElementById('mag7Card').classList.add('selected');
+        document.getElementById('mag7Card').querySelector('.preset-btn').textContent = 'Selected';
+        document.getElementById('djiaCard').querySelector('.preset-btn').textContent = 'Select';
+    }
+    
+    const universeData = ASSET_UNIVERSES[preset];
+    console.log(`✅ Selected preset: ${universeData.name}`);
+}
+
+function handleAddAsset() {
+    const input = document.getElementById('assetSearchInput');
+    const ticker = input.value.trim().toUpperCase();
+    
+    if (!ticker) return;
+    
+    // Validate ticker (only alphanumeric, 1-5 chars)
+    if (!/^[A-Z0-9]{1,5}$/.test(ticker)) {
+        console.warn(`⚠️ Invalid ticker: ${ticker}`);
+        return;
+    }
+    
+    // Check if already added
+    if (document.querySelector(`[data-ticker="${ticker}"]`)) {
+        console.warn(`⚠️ ${ticker} already in custom universe`);
+        input.value = '';
+        return;
+    }
+    
+    // Create chip
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.dataset.ticker = ticker;
+    const companyName = POPULAR_STOCKS[ticker] || ticker;
+    chip.innerHTML = `<span class="chip-ticker">${ticker}</span> <span class="chip-remove">×</span>`;
+    chip.title = companyName;
+    
+    // Add remove listener
+    chip.querySelector('.chip-remove').addEventListener('click', () => removeChip(chip));
+    
+    // Add to container
+    document.getElementById('selectedChips').appendChild(chip);
+    input.value = '';
+    
+    console.log(`✅ Added ${ticker} to custom universe`);
+}
+
+function removeChip(chipEl) {
+    const ticker = chipEl.dataset.ticker;
+    chipEl.remove();
+    console.log(`❌ Removed ${ticker} from custom universe`);
+}
+
+/**
+ * Show autocomplete suggestions as user types
+ */
+function setupAssetSearch() {
+    const searchInput = document.getElementById('assetSearchInput');
+    let autocompleteDiv = null;
+    
+    if (!searchInput) return;
+    
+    searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.trim().toUpperCase();
+        
+        // Remove existing autocomplete
+        if (autocompleteDiv) autocompleteDiv.remove();
+        
+        if (query.length === 0) return;
+        
+        // Filter matching stocks
+        const matches = Object.entries(POPULAR_STOCKS)
+            .filter(([ticker, name]) => 
+                ticker.includes(query) || name.toUpperCase().includes(query)
+            )
+            .slice(0, 5); // Limit to 5 suggestions
+        
+        if (matches.length === 0) return;
+        
+        // Create autocomplete dropdown
+        autocompleteDiv = document.createElement('div');
+        autocompleteDiv.className = 'asset-autocomplete';
+        
+        matches.forEach(([ticker, name]) => {
+            const option = document.createElement('div');
+            option.className = 'autocomplete-option';
+            option.innerHTML = `<strong>${ticker}</strong> - ${name}`;
+            option.addEventListener('click', () => {
+                searchInput.value = ticker;
+                handleAddAsset();
+                if (autocompleteDiv) autocompleteDiv.remove();
+            });
+            autocompleteDiv.appendChild(option);
+        });
+        
+        const inputGroup = searchInput.closest('.search-input-group');
+        inputGroup.appendChild(autocompleteDiv);
+    });
+    
+    // Hide autocomplete when clicking elsewhere
+    document.addEventListener('click', (e) => {
+        if (e.target !== searchInput && autocompleteDiv) {
+            autocompleteDiv.remove();
+            autocompleteDiv = null;
+        }
+    });
 }
 
 /**
  * Run backtest
  */
+/**
+ * Get selected assets based on Preset or Custom tab
+ */
+function getSelectedAssets() {
+    const builtinTab = document.getElementById('builtinTab');
+    const isBuiltin = builtinTab.classList.contains('active');
+    
+    if (!isBuiltin) {
+        // Get chips from custom universe
+        const chips = document.querySelectorAll('#selectedChips .chip');
+        const assets = Array.from(chips).map(chip => chip.dataset.ticker);
+        return assets.length > 0 ? assets : ['AAPL']; // Default fallback
+    } else {
+        // Get assets from selected built-in universe
+        return ASSET_UNIVERSES[selectedUniverse].assets;
+    }
+}
+
 async function runBacktest() {
     // Get dates from form
     const startDateInput = document.getElementById('startDate');
@@ -461,15 +729,28 @@ async function runBacktest() {
         return;
     }
     
+    // Get selected assets and model
+    const assets = getSelectedAssets();
+    const modelSelect = document.getElementById('modelSelect');
+    const model = modelSelect ? modelSelect.value : 'claude-haiku-4.5';
+    
     console.log(`Running backtest: ${startDate} to ${endDate}`);
+    console.log(`📊 Assets: ${assets.join(', ')}`);
+    console.log(`🤖 Model: ${model}`);
     
     const btn = document.querySelector('.run-backtest-btn');
     btn.textContent = '⏳ Running...';
     btn.disabled = true;
     
     try {
-        // Call API with session ID
-        const data = await API.post(`${API_BASE}/backtest/run?start_date=${startDate}&end_date=${endDate}`, {});
+        // Call API with session ID, assets, and model
+        const params = new URLSearchParams({
+            start_date: startDate,
+            end_date: endDate,
+            assets: assets.join(','),
+            model: model
+        });
+        const data = await API.post(`${API_BASE}/backtest/run?${params.toString()}`, {});
         
         if (!data.success) {
             console.error('❌ Backtest failed:', data.error || 'Unknown error');
