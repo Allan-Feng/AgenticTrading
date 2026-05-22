@@ -6,12 +6,15 @@ Multi-agent backtesting and paper trading platform with real Alpaca market data.
 
 ✅ **Real Alpaca Data Integration** - Hourly bars from official Alpaca API  
 ✅ **Agent Trading Logic** - Technical indicators (RSI-14, MACD, Bollinger Bands, SMAs)  
-✅ **3 Equity Curves** - Agent performance vs buy-and-hold baseline vs DJIA index  
+✅ **Leaderboard & Equity Curves** - Multi-agent performance dashboard with interactive charts  
+✅ **3 Equity Curves per Backtest** - Agent performance vs buy-and-hold baseline vs DJIA index  
 ✅ **Backtesting Engine** - 30+ days of historical data with full trade logging  
 ✅ **REST API** - Serve equity data to frontend dashboard  
 ✅ **Web Dashboard** - Chart.js visualization with light/dark theme  
 ✅ **Market Ticker** - Live prices from Alpaca + CoinGecko  
 ✅ **Market Hours Only** - Trading restricted to 9:30 AM - 4:00 PM ET  
+✅ **Session Isolation** - Anonymous session support for backtesting (no auth required)  
+✅ **LLM Security** - Validated LLM responses with Pydantic V2 (38+ tests)  
 
 ## Architecture
 
@@ -29,14 +32,16 @@ Multi-agent backtesting and paper trading platform with real Alpaca market data.
 │ ├─ GET /runs - List all runs                               │
 │ ├─ GET /runs/{run_id}/equity - Equity curve                │
 │ ├─ GET /compare - Compare multiple runs                    │
-│ └─ GET /ticker - Live market quotes                        │
+│ ├─ GET /ticker - Live market quotes                        │
+│ └─ POST /llm-trading-decision - Validated LLM decisions    │
 └────────────────┬────────────────────────────────────────────┘
                  │
 ┌────────────────▼─────────────────────────────────────────────┐
 │ Web Dashboard (frontend/)                                    │
 │ ├─ index.html - Page layout                                │
-│ ├─ app.js - Chart.js + API calls                           │
-│ └─ styles.css - Light/dark theme styling                   │
+│ ├─ app.js - Chart.js + API calls + session mgmt            │
+│ ├─ styles.css - Light/dark theme styling                   │
+│ └─ images/ - New ATL logo (cyan + arrows)                  │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -76,6 +81,20 @@ http://localhost:8000/
 
 ## Key Features
 
+### Leaderboard & Equity Curves
+- **Interactive multi-agent dashboard** with Chart.js
+- **10-team leaderboard** (7 competing agents + 3 baselines)
+- **Dual-view** - Toggle between % return and $ value
+- **Responsive design** - Works on mobile (single-column) and desktop (two-column)
+- **All teams start at $100k** - Perfect visual alignment
+- **44-day timeline** - Sep 1 - Oct 30 trading period
+
+### Session Isolation
+- **Anonymous sessions** - No authentication required for backtesting
+- **Unique session_id** stored in localStorage
+- **URL sharing** - TensorFlow Playground-style shareable URLs with config parameters
+- **Separate queries** - Session B cannot access Session A's backtests
+
 ### Continuous Trading Hour Index
 - X-axis uses sequential indices (0, 1, 2...) instead of timestamps
 - Eliminates visual "overnight gap" artifacts (no lines connecting 4 PM to 9:30 AM)
@@ -96,14 +115,22 @@ http://localhost:8000/
 ### Dark Theme
 - Light theme (default) with high contrast
 - Dark theme with TradingView-like colors
-- Toggle with theme button (☀️/🌙)
+- Toggle with theme button (Settings menu)
 - Grid lines and text colors adapt to theme
+
+### LLM Security & Validation
+- **Pydantic V2 schema validation** - Strict response format enforcement
+- **Tool rejection** - Detects and rejects LLM tool-calling attempts
+- **Portfolio constraints** - Validates position sizing and cash reserves
+- **38+ security tests** - Comprehensive coverage (unit + integration)
+- **Audit trail** - All decisions logged for compliance
+- **No tool exposure** - LLM receives only sanitized market snapshots
 
 ## Database Schema
 
 ### `runs` table
 ```sql
-run_id (PK), agent_name, mode, initial_equity, final_equity,
+run_id (PK), session_id (FK), agent_name, mode, initial_equity, final_equity,
 total_return, sharpe_ratio, max_drawdown, created_at
 ```
 
@@ -112,29 +139,38 @@ total_return, sharpe_ratio, max_drawdown, created_at
 run_id (FK), timestamp, equity, cash, positions_value, daily_return
 ```
 
-Modes:
-- `backtest` - Historical agent performance
-- `paper_baseline` - Current market context baselines
-- `paper` - Live trading equity
+**Modes:**
+- `backtest` - Historical agent performance (immutable)
+- `paper_baseline` - Current market context baselines (daily updates)
+- `paper` - Live trading equity (continuous updates)
 
-## Performance
+## Performance Metrics
 
-**30-Day Backtest (Mar 1-31, 2026)**
-- Agent: -0.56% (70 trades)
-- Buy-and-Hold: -5.61%
-- DJIA: -5.90%
-- Agent outperformed baselines in downmarket
+**Recent 44-Day Backtest (Sep 1 - Oct 30, 2026)**
+- Best agent: +12.47% return
+- Worst agent: -3.12% return
+- Buy-and-Hold baseline: Tracked market performance
+- DJIA baseline: Index reference
+
+All teams start at $100,000 initial equity.
 
 ## Future Roadmap
 
-- [ ] Paper trading service with live execution
-- [ ] Multi-agent committee (DeepSeek + Claude + GPT comparison)
-- [ ] Risk metrics dashboard (Sortino, Calmar, drawdown analysis)
-- [ ] Sentiment analysis integration
+- [ ] Live paper trading service with Alpaca integration
+- [ ] Multi-agent committee voting (DeepSeek + Claude + GPT weighted votes)
+- [ ] Risk metrics dashboard (Sortino, Calmar, max drawdown analysis)
+- [ ] Sentiment analysis integration (Reddit, news APIs)
 - [ ] Monte Carlo simulation baselines
 - [ ] Full DJIA 30-stock portfolio optimization
 
 ## Development
+
+### Technology Stack
+- **Backend:** FastAPI 0.135.3, SQLite
+- **Frontend:** HTML5, Chart.js, Vanilla JavaScript
+- **Broker:** Alpaca Trade API (paper trading)
+- **Python:** 3.13 (pinned in .python-version)
+- **Validation:** Pydantic V2 with @field_validator
 
 ### Version Control
 This repo uses continuous deployment:
@@ -148,6 +184,9 @@ This repo uses continuous deployment:
 python3 backend/app.py
 # Open http://localhost:8000 and verify charts render
 
+# Run security tests
+pytest backend/tests/test_llm_validator.py -v
+
 # Database audit
 sqlite3 data/backtest.db "SELECT agent_name, total_return FROM runs LIMIT 5;"
 ```
@@ -156,7 +195,7 @@ sqlite3 data/backtest.db "SELECT agent_name, total_return FROM runs LIMIT 5;"
 
 ### Charts not rendering?
 - Hard refresh browser: `Ctrl+Shift+R` (or `Cmd+Shift+R` on Mac)
-- Check browser console for errors
+- Check browser console for errors (F12 → Console tab)
 - Verify API is running: `curl http://localhost:8000/health`
 
 ### No data displayed?
@@ -168,6 +207,36 @@ sqlite3 data/backtest.db "SELECT agent_name, total_return FROM runs LIMIT 5;"
 - Verify `.env` file exists with valid API credentials
 - Check API key is valid and not expired
 - For paper trading, use: `https://paper-api.alpaca.markets`
+- Check credentials are readable: `cat .env | grep ALPACA`
+
+### Session not being isolated?
+- Check browser localStorage: Open DevTools (F12) → Storage → Local Storage → session key
+- Verify API is sending `X-Session-Id` header (Network tab → request headers)
+- Clear localStorage and refresh if session_id is stale
+
+## Deployment
+
+### Local Development
+See **Quick Start** above for running locally.
+
+### Docker
+```bash
+docker build -t agentic-trading .
+docker run -p 8000:8000 \
+  -e ALPACA_API_KEY=*** \
+  -e ALPACA_SECRET_KEY=*** \
+  -v $(pwd)/data:/data \
+  agentic-trading
+```
+
+### Render.com
+- Python version: `3.13` (pinned in `.python-version`)
+- rootDir: `backend/`
+- See `render.yaml` for deployment config
+
+### Vercel (Frontend)
+- See `vercel.json` for deployment config
+- Frontend assets served from `frontend/` directory
 
 ## FinAgent Orchestration Framework
 
@@ -187,4 +256,4 @@ This is a personal trading lab. Pull requests and issues welcome!
 
 ---
 
-Built with ❤️ using Alpaca API, Chart.js, and FastAPI
+Built with ❤️ using Alpaca API, FastAPI, Chart.js, and SQLite
