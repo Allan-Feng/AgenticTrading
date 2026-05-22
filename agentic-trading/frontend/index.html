@@ -11,7 +11,9 @@
     <!-- Header -->
     <header class="header">
         <div class="header-left">
-            <div class="logo">📊</div>
+            <div class="logo-container">
+                <img src="images/logo-small.svg" alt="ATL" class="logo-icon">
+            </div>
             <div class="title-section">
                 <div class="title-with-badge">
                     <h1>Agentic Trading Lab</h1>
@@ -23,13 +25,13 @@
         <div class="header-right">
             <div class="mode-toggle">
                 <button class="mode-btn active" data-mode="backtest">Backtest</button>
-                <button class="mode-btn" data-mode="paper">📄 Paper Trading</button>
-                <button class="mode-btn" data-mode="contest">🏆 Leaderboard</button>
+                <button class="mode-btn" data-mode="paper">Paper Trading</button>
+                <button class="mode-btn" data-mode="contest">Leaderboard</button>
             </div>
             <div class="icon-buttons">
-                <button class="icon-btn" title="Help">❓</button>
-                <button class="icon-btn" title="Notifications">🔔</button>
-                <button class="icon-btn" title="Settings">⚙️</button>
+                <button class="icon-btn" title="Help">?</button>
+                <button class="icon-btn" title="Notifications">Bell</button>
+                <button class="icon-btn" title="Settings">Settings</button>
             </div>
         </div>
     </header>
@@ -39,7 +41,7 @@
         <div class="ticker-placeholder">Loading market data...</div>
     </div>
     <div class="ticker-info">
-        <span class="ticker-source-label" title="All data from Alpaca: Stocks use IEX quote vs previous IEX close. Crypto use Alpaca quote vs previous daily close. Data may differ from consolidated feeds (Yahoo, etc).">ⓘ Data: Alpaca IEX (stocks & crypto)</span>
+        <span class="ticker-source-label" title="All data from Alpaca: Stocks use IEX quote vs previous IEX close. Crypto use Alpaca quote vs previous daily close. Data may differ from consolidated feeds (Yahoo, etc).">Data: Alpaca IEX (stocks & crypto)</span>
     </div>
 
     <!-- Main Content: 3-Column Layout -->
@@ -223,7 +225,7 @@
             <div class="section-card">
                 <div class="section-header">
                     <div class="section-title-group">
-                        <h2>📈 TRADING PERFORMANCE</h2>
+                        <h2>TRADING PERFORMANCE</h2>
                     </div>
                     <div class="chart-controls">
                         <button class="run-backtest-btn">▶ Run Backtest</button>
@@ -244,14 +246,14 @@
             <!-- Trading Log Section -->
             <div class="section-card">
                 <div class="section-header">
-                    <h2>📋 TRADING LOG</h2>
+                    <h2>TRADING LOG</h2>
                     <div class="log-controls">
                         <select class="filter-select">
                             <option>All Trades</option>
                             <option>Buys Only</option>
                             <option>Sells Only</option>
                         </select>
-                        <button class="filter-btn">🔽</button>
+                        <button class="filter-btn">Filter</button>
                     </div>
                 </div>
 
@@ -310,7 +312,7 @@
         <aside class="right-panel">
             <!-- Trading Performance Summary -->
             <div class="section-card compact">
-                <h3 class="section-title">📊 TRADING PERFORMANCE SUMMARY</h3>
+                <h3 class="section-title">TRADING PERFORMANCE SUMMARY</h3>
                 
                 <div class="metric-row">
                     <span class="metric-label">Final Value</span>
@@ -334,7 +336,7 @@
 
             <!-- Performance Drivers -->
             <div class="section-card compact">
-                <h3 class="section-title">🎯 PERFORMANCE DRIVERS</h3>
+                <h3 class="section-title">PERFORMANCE DRIVERS</h3>
                 
                 <div class="driver-item positive">
                     <span class="driver-icon">▲</span>
@@ -354,22 +356,22 @@
 
             <!-- Quick Scenarios -->
             <div class="section-card compact">
-                <h3 class="section-title">⚡ QUICK SCENARIOS</h3>
+                <h3 class="section-title">QUICK SCENARIOS</h3>
                 
                 <button class="scenario-btn">
-                    <span class="scenario-icon">💰</span>
+                    <span class="scenario-icon">L</span>
                     <span>Low Cost</span>
                 </button>
                 <button class="scenario-btn">
-                    <span class="scenario-icon">🚀</span>
+                    <span class="scenario-icon">H</span>
                     <span>High Momentum</span>
                 </button>
                 <button class="scenario-btn">
-                    <span class="scenario-icon">🛡️</span>
+                    <span class="scenario-icon">C</span>
                     <span>Conservative</span>
                 </button>
                 <button class="scenario-btn">
-                    <span class="scenario-icon">⚙️</span>
+                    <span class="scenario-icon">S</span>
                     <span>Custom Scenario</span>
                 </button>
             </div>
@@ -399,7 +401,7 @@
                         <span class="paper-label">Day P&L</span>
                         <span class="paper-value" id="dayPnL">--</span>
                     </div>
-                    <button class="paper-refresh-btn" onclick="refreshPaperData()">🔄 Refresh</button>
+                    <button class="paper-refresh-btn" onclick="refreshPaperData()">Refresh</button>
                 </div>
 
                 <div class="paper-card">
@@ -452,7 +454,7 @@
                         <span class="stat-value" id="lastUpdate">Oct 30, 16:00 UTC</span>
                     </div>
                     <div class="stat-item compact">
-                        <span class="stat-label">🏆 Leader</span>
+                        <span class="stat-label">Leader</span>
                         <span class="stat-value" id="leaderTeam">AlphaForge</span>
                     </div>
                 </div>
@@ -487,7 +489,7 @@
                 <!-- Left: Table -->
                 <section class="leaderboard-table-section compact">
                     <div class="table-header compact">
-                        <h3>📊 Official Rankings</h3>
+                        <h3>Official Rankings</h3>
                         <span class="update-indicator">Updates every 60s</span>
                     </div>
                     <div class="table-wrapper compact">
@@ -517,7 +519,7 @@
                 <aside class="leaderboard-table-sidebar compact">
                     <!-- Ranking Rules -->
                     <div class="sidebar-card compact">
-                        <h3 class="sidebar-title compact">⚖️ Rules</h3>
+                        <h3 class="sidebar-title compact">Rules</h3>
                         <div class="ranking-formula compact">
                             <p class="formula-compact">Final Score = (rCR + rSR + rWL) / 3</p>
                             <ul class="formula-items compact">
@@ -530,7 +532,7 @@
 
                     <!-- Team Detail -->
                     <div class="sidebar-card compact">
-                        <h3 class="sidebar-title compact">📊 Team</h3>
+                        <h3 class="sidebar-title compact">Team</h3>
                         <div id="selectedTeamDetail" class="team-detail compact">
                             <div class="no-selection">Click team</div>
                         </div>

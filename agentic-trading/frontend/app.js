@@ -13,9 +13,9 @@ function initSession() {
   if (!sessionId) {
     sessionId = crypto.randomUUID();
     localStorage.setItem('trading-session-id', sessionId);
-    console.log('🆕 New anonymous session:', sessionId);
+    console.log('New anonymous session:', sessionId);
   } else {
-    console.log('📋 Restored session:', sessionId);
+    console.log('Restored session:', sessionId);
   }
   window.SESSION_ID = sessionId;
 }
@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const config = loadConfigFromURL();
     window.CURRENT_CONFIG = config;
     console.log('⚙️ Experiment config:', config);
-    console.log('📋 Session ID:', window.SESSION_ID);
+    console.log('Session ID:', window.SESSION_ID);
     
     console.log('Dashboard initializing...');
     
@@ -568,7 +568,7 @@ function handleUniverseTabSwitch(tab) {
         customTab.style.display = 'block';
     }
     
-    console.log(`📊 Switched to ${tabName} universe tab`);
+    console.log(`Switched to ${tabName} universe tab`);
 }
 
 function selectPreset(preset) {
@@ -735,8 +735,8 @@ async function runBacktest() {
     const model = modelSelect ? modelSelect.value : 'claude-haiku-4.5';
     
     console.log(`Running backtest: ${startDate} to ${endDate}`);
-    console.log(`📊 Assets: ${assets.join(', ')}`);
-    console.log(`🤖 Model: ${model}`);
+    console.log(`Assets: ${assets.join(', ')}`);
+    console.log(`Model: ${model}`);
     
     const btn = document.querySelector('.run-backtest-btn');
     btn.textContent = '⏳ Running...';
@@ -1166,7 +1166,7 @@ function formatPercent(value) {
  * Load all paper trading data in parallel
  */
 async function loadPaperTradingData() {
-    console.log('📈 Loading paper trading data...');
+    console.log('Loading paper trading data...');
     
     try {
         // Fetch all data in parallel
@@ -1506,7 +1506,7 @@ async function refreshPaperData() {
     
     if (btn) {
         btn.disabled = false;
-        btn.textContent = '🔄 Refresh';
+        btn.textContent = 'Refresh';
     }
 }
 
@@ -2145,7 +2145,7 @@ function populateLeaderboardTable() {
             <td class="rank-cell">${team.rank}</td>
             <td>
                 <div class="team-name-badge">
-                    ${team.rank <= 3 ? '🏆' : ''}
+                    ${team.rank <= 3 ? '[CHAMPION]' : ''}
                     <span>${team.team_name}</span>
                     <span class="team-badge">${team.team_badge}</span>
                 </div>

@@ -77,9 +77,17 @@ body {
     flex: 0 0 auto;
 }
 
-.logo {
-    font-size: 28px;
-    line-height: 1;
+.logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.logo-icon {
+    height: 40px;
+    width: auto;
+    max-width: 120px;
 }
 
 .title-section {
