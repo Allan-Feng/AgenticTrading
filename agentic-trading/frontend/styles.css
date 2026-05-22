@@ -78,18 +78,24 @@ body {
 }
 
 .logo-container {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    overflow: hidden;
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex: 0 0 auto;
+    background: #07182d;
 }
 
 .logo-icon {
-    height: 40px;
-    width: auto;
-    max-width: 120px;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transform: scale(1.22);
 }
-
 .title-section {
     display: flex;
     flex-direction: column;
