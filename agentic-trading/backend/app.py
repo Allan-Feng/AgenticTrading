@@ -945,6 +945,26 @@ async def serve_app_js():
     """Serve app.js."""
     return FileResponse(frontend_path / "app.js", media_type="text/javascript")
 
+@app.get("/images/{file_name}", include_in_schema=False)
+async def serve_image(file_name: str):
+    """Serve image files from the images directory."""
+    image_path = frontend_path / "images" / file_name
+    if not image_path.exists():
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    # Determine media type based on file extension
+    ext = image_path.suffix.lower()
+    media_types = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif": "image/gif",
+        ".svg": "image/svg+xml",
+    }
+    media_type = media_types.get(ext, "application/octet-stream")
+    
+    return FileResponse(image_path, media_type=media_type)
+
 
 # ============================================================================
 # Run the app
