@@ -211,7 +211,6 @@ data/cache/*.csv
 data/cache/*.json
 data/temp/
 *.tmp
-data/
 
 # Log files
 *.log

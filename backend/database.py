@@ -8,18 +8,22 @@ Equity timeseries and trades can be verified through agent_runs ownership.
 
 import sqlite3
 import json
+import os
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 
-DB_PATH = Path(__file__).parent.parent / "data" / "backtest.db"
+# Use persistent disk path if set (Render), otherwise local path
+DB_PATH = Path(os.getenv("DATABASE_PATH", str(Path(__file__).parent.parent / "data" / "backtest.db")))
 
 
 class BacktestDatabase:
     """Minimal SQLite wrapper for equity curve storage."""
     
-    def __init__(self, db_path: Path = DB_PATH):
-        self.db_path = db_path
+    def __init__(self, db_path: Path = None):
+        if db_path is None:
+            db_path = DB_PATH
+        self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_schema()
         self._migrate_schema()  # Handle existing DBs
