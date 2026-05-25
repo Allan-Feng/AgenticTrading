@@ -125,18 +125,20 @@ class BaselineGenerator:
         bars_by_symbol: Dict[str, pd.DataFrame],
         start_date: str,
         end_date: str,
-        initial_capital: float = 100000
+        initial_capital: float = 100000,
+        symbols_to_buy: Optional[List[str]] = None
     ) -> List[Dict]:
         """
         Generate Buy & Hold baseline curve.
         
-        Strategy: Buy equal amounts of all symbols at start, hold until end.
+        Strategy: Buy equal amounts of specified symbols at start, hold until end.
         
         Args:
             bars_by_symbol: Dict of {symbol: DataFrame with OHLCV}
             start_date: Start date string
             end_date: End date string
             initial_capital: Initial portfolio value
+            symbols_to_buy: List of symbols to buy (default: all in bars_by_symbol)
         
         Returns:
             List of equity points: [{timestamp, equity, cash, positions_value}, ...]
@@ -144,9 +146,18 @@ class BaselineGenerator:
         if not bars_by_symbol:
             return []
         
+        # Filter to only requested symbols
+        if symbols_to_buy is None:
+            bars_subset = bars_by_symbol
+        else:
+            bars_subset = {k: v for k, v in bars_by_symbol.items() if k in symbols_to_buy}
+        
+        if not bars_subset:
+            return []
+        
         # Get all timestamps across all symbols
         all_timestamps = set()
-        for df in bars_by_symbol.values():
+        for df in bars_subset.values():
             all_timestamps.update(df.index)
         all_timestamps = sorted(all_timestamps)
         
@@ -181,9 +192,12 @@ class BaselineGenerator:
         # Buy equal amounts of available stocks
         positions = {}
         cash = initial_capital
-        num_symbols = len(bars_by_symbol)
+        num_symbols = len(bars_subset)
         
-        for symbol, df in bars_by_symbol.items():
+        print(f"\n   📋 Baseline buying {num_symbols} stocks equally:")
+        print(f"      Allocation per stock: ${initial_capital / num_symbols:,.0f}")
+        
+        for symbol, df in bars_subset.items():
             if first_ts not in df.index:
                 continue
             
@@ -195,9 +209,13 @@ class BaselineGenerator:
                 positions[symbol] = shares
                 cash -= shares * price
         
+        print(f"      Stocks bought: {len(positions)} ({', '.join(sorted(positions.keys())[:10])}{'...' if len(positions) > 10 else ''})")
+        print(f"      Total invested: ${initial_capital - cash:,.0f}")
+        print(f"      Cash remaining: ${cash:,.0f}")
+        
         # Build forward-filled price cache for smooth equity curve
         price_cache = {}
-        for symbol, df in bars_by_symbol.items():
+        for symbol, df in bars_subset.items():
             if symbol not in positions:
                 continue
             
@@ -239,18 +257,20 @@ class BaselineGenerator:
         bars_by_symbol: Dict[str, pd.DataFrame],
         start_date: str,
         end_date: str,
-        initial_capital: float = 100000
+        initial_capital: float = 100000,
+        symbols_to_track: Optional[List[str]] = None
     ) -> List[Dict]:
         """
         Generate Index baseline curve (equal-weight index).
         
-        Strategy: Equal-weight portfolio of all symbols, rebalanced daily.
+        Strategy: Equal-weight portfolio of specified symbols, rebalanced daily.
         
         Args:
             bars_by_symbol: Dict of {symbol: DataFrame with OHLCV}
             start_date: Start date string
             end_date: End date string
             initial_capital: Initial portfolio value
+            symbols_to_track: List of symbols to track (default: all in bars_by_symbol)
         
         Returns:
             List of equity points: [{timestamp, equity, cash, positions_value}, ...]
@@ -258,9 +278,15 @@ class BaselineGenerator:
         if not bars_by_symbol:
             return []
         
+        # Filter to only requested symbols
+        if symbols_to_track is None:
+            bars_subset = bars_by_symbol
+        else:
+            bars_subset = {k: v for k, v in bars_by_symbol.items() if k in symbols_to_track}
+        
         # Get all timestamps
         all_timestamps = set()
-        for df in bars_by_symbol.values():
+        for df in bars_subset.values():
             all_timestamps.update(df.index)
         all_timestamps = sorted(all_timestamps)
         
@@ -294,7 +320,7 @@ class BaselineGenerator:
         
         # Get initial prices
         initial_prices = {}
-        for symbol, df in bars_by_symbol.items():
+        for symbol, df in bars_subset.items():
             if first_ts in df.index:
                 initial_prices[symbol] = df.loc[first_ts, "close"]
         
@@ -303,7 +329,7 @@ class BaselineGenerator:
         
         # Build forward-filled price cache
         price_cache = {}
-        for symbol, df in bars_by_symbol.items():
+        for symbol, df in bars_subset.items():
             if symbol not in initial_prices:
                 continue
             
@@ -319,6 +345,12 @@ class BaselineGenerator:
         # Calculate index equity at each timestamp
         equity_curve = []
         num_symbols = len(initial_prices)
+        
+        print(f"\n   📋 Index baseline tracking {num_symbols} stocks equally (equal-weight):")
+        print(f"      Stocks tracked: {', '.join(sorted(initial_prices.keys())[:10])}{'...' if len(initial_prices) > 10 else ''}")
+        print(f"      Initial capital: ${initial_capital:,.0f}")
+        print(f"      Portfolio: 100% invested in {num_symbols}-stock equal-weight index")
+        print()
         
         for timestamp in all_timestamps:
             index_return = 0
@@ -354,7 +386,8 @@ def generate_baselines(
     bars_by_symbol: Dict[str, pd.DataFrame],
     start_date: str,
     end_date: str,
-    initial_capital: float = 100000
+    initial_capital: float = 100000,
+    symbols_list: Optional[List[str]] = None
 ) -> Tuple[List[Dict], List[Dict]]:
     """
     Generate both baselines (Buy & Hold, Index).
@@ -364,6 +397,7 @@ def generate_baselines(
         start_date: Start date string
         end_date: End date string
         initial_capital: Initial portfolio value
+        symbols_list: List of symbols to use (default: all in bars_by_symbol)
     
     Returns:
         Tuple of (buyhold_curve, index_curve)
@@ -371,11 +405,11 @@ def generate_baselines(
     generator = BaselineGenerator()
     
     buyhold_curve = generator.generate_buyhold_baseline(
-        bars_by_symbol, start_date, end_date, initial_capital
+        bars_by_symbol, start_date, end_date, initial_capital, symbols_list
     )
     
     index_curve = generator.generate_index_baseline(
-        bars_by_symbol, start_date, end_date, initial_capital
+        bars_by_symbol, start_date, end_date, initial_capital, symbols_list
     )
     
     return buyhold_curve, index_curve

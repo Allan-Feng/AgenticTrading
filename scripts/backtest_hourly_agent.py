@@ -20,6 +20,7 @@ import sys
 import json
 import argparse
 import os
+import re
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
@@ -33,6 +34,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 from database import db
 from baseline_generator import generate_baselines
+from llm_validator import create_safe_prompt, create_prompt, validate_llm_response, LLMTradingDecision, TOP_10_STOCKS
+
+# Optional: LLM integration
+try:
+    from anthropic import Anthropic
+    HAS_ANTHROPIC = True
+except ImportError:
+    HAS_ANTHROPIC = False
+    print("⚠️  Anthropic SDK not installed. Fallback to rule-based trading.")
+    print("   To enable LLM: pip install anthropic")
 
 try:
     import pandas_ta as ta
@@ -54,6 +65,51 @@ DJIA_30 = [
     "MRK", "NVDA", "BA", "UNH", "MMM",
     "CVX", "NKE", "AMEX", "TRV", "WBA"
 ]
+
+# Top 10 DJIA stocks (for buy-and-hold and baseline)
+TOP_10 = TOP_10_STOCKS  # Import from llm_validator to keep them in sync
+
+# ============================================================================
+# JSON Parsing Utilities
+# ============================================================================
+
+def fix_json_formatting(json_str: str) -> str:
+    """
+    Try to fix common JSON formatting issues from LLM responses.
+    
+    Fixes:
+    - Missing commas between objects in arrays
+    - Trailing commas
+    - Extra closing brackets
+    """
+    # Fix 1: Add missing commas between objects in arrays (most common issue)
+    # Pattern: } followed by newline(s) and whitespace and {  
+    # This handles: }
+    #             {
+    json_str = re.sub(r'(\})\s*\n\s*(\{)', r'\1,\n\2', json_str)
+    
+    # Fix 1b: Also handle } with no space then {
+    json_str = re.sub(r'(\})(\{)', r'\1,\2', json_str)
+    
+    # Fix 2: Remove trailing commas before closing brackets
+    # Pattern: , followed by optional whitespace and ] or }
+    json_str = re.sub(r',(\s*[\]}])', r'\1', json_str)
+    
+    # Fix 3: Remove multiple closing brackets (sometimes LLM adds extra ones)
+    # Pattern: ]]}  should be ]
+    json_str = re.sub(r'\]\s*\}\s*\]', ']', json_str)
+    
+    # Fix 4: Fix }] at the end - should just be ]
+    json_str = re.sub(r'\}\s*\]\s*$', ']', json_str)
+    
+    return json_str
+
+
+# ============================================================================
+# LLM Model Configuration
+# ============================================================================
+
+LLM_MODEL_NAME = "claude-haiku-4-5-20251001"  # Change this to switch models
 
 # ============================================================================
 # Configuration
@@ -184,38 +240,96 @@ class TechnicalIndicators:
         - MACD (12/26/9)
         - Bollinger Bands (20/2)
         - SMA (20 & 50-period)
+        
+        IMPORTANT: Requires minimum 50 bars for reliable signals.
+        Backtests shorter than 1 month will have unreliable indicators.
         """
+        if df is None or df.empty:
+            print(f"Warning: Empty or None dataframe, skipping indicators")
+            return df
+        
         df = df.copy()
         
+        # Check if we have enough data for indicators
+        min_required = 50  # Need at least 50 bars for SMA50
+        if len(df) < min_required:
+            print(f"\n⚠️  DATA WARNING: Only {len(df)} bars, need {min_required}!")
+            print(f"   Indicators will be unreliable. Backtest needs at least 1 month of data.")
+            print(f"   Recommended: 3+ months for meaningful results.\n")
+            # Still calculate what we can
+        
         try:
-            # RSI
-            rsi = ta.rsi(df["close"], length=14)
-            df["rsi_14"] = rsi
+            # RSI (14-period requires 14+ bars)
+            if len(df) >= 14:
+                rsi = ta.rsi(df["close"], length=14)
+                if rsi is not None:
+                    df["rsi_14"] = rsi
+                else:
+                    df["rsi_14"] = 50.0  # Default neutral RSI
+            else:
+                df["rsi_14"] = 50.0  # Not enough data
             
-            # MACD
-            macd = ta.macd(df["close"], fast=12, slow=26, signal=9)
-            macd_cols = [c for c in macd.columns if "MACD_12_26_9" in c]
-            signal_cols = [c for c in macd.columns if "MACDs_12_26_9" in c]
-            if macd_cols:
-                df["macd"] = macd[macd_cols[0]]
-            if signal_cols:
-                df["macd_signal"] = macd[signal_cols[0]]
+            # MACD (26-period required)
+            if len(df) >= 26:
+                macd = ta.macd(df["close"], fast=12, slow=26, signal=9)
+                if macd is not None and isinstance(macd, pd.DataFrame):
+                    macd_cols = [c for c in macd.columns if "MACD_12_26_9" in c]
+                    signal_cols = [c for c in macd.columns if "MACDs_12_26_9" in c]
+                    if macd_cols:
+                        df["macd"] = macd[macd_cols[0]]
+                    else:
+                        df["macd"] = 0.0
+                    if signal_cols:
+                        df["macd_signal"] = macd[signal_cols[0]]
+                    else:
+                        df["macd_signal"] = 0.0
+                else:
+                    df["macd"] = 0.0
+                    df["macd_signal"] = 0.0
+            else:
+                df["macd"] = 0.0
+                df["macd_signal"] = 0.0
             
-            # Bollinger Bands
-            bbands = ta.bbands(df["close"], length=20, std=2)
-            bbu_cols = [c for c in bbands.columns if "BBU" in c]
-            bbl_cols = [c for c in bbands.columns if "BBL" in c]
-            if bbu_cols:
-                df["bb_upper"] = bbands[bbu_cols[0]]
-            if bbl_cols:
-                df["bb_lower"] = bbands[bbl_cols[0]]
+            # Bollinger Bands (20-period required)
+            if len(df) >= 20:
+                bbands = ta.bbands(df["close"], length=20, std=2)
+                if bbands is not None and isinstance(bbands, pd.DataFrame):
+                    bbu_cols = [c for c in bbands.columns if "BBU" in c]
+                    bbl_cols = [c for c in bbands.columns if "BBL" in c]
+                    if bbu_cols:
+                        df["bb_upper"] = bbands[bbu_cols[0]]
+                    else:
+                        df["bb_upper"] = df["close"].max()
+                    if bbl_cols:
+                        df["bb_lower"] = bbands[bbl_cols[0]]
+                    else:
+                        df["bb_lower"] = df["close"].min()
+                else:
+                    df["bb_upper"] = df["close"].max()
+                    df["bb_lower"] = df["close"].min()
+            else:
+                df["bb_upper"] = df["close"].max()
+                df["bb_lower"] = df["close"].min()
             
             # SMAs
-            df["sma20"] = ta.sma(df["close"], length=20)
-            df["sma50"] = ta.sma(df["close"], length=50)
+            if len(df) >= 20:
+                sma20 = ta.sma(df["close"], length=20)
+                df["sma20"] = sma20 if sma20 is not None else df["close"].mean()
+            else:
+                df["sma20"] = df["close"].mean()
+            
+            if len(df) >= 50:
+                sma50 = ta.sma(df["close"], length=50)
+                df["sma50"] = sma50 if sma50 is not None else df["close"].mean()
+            else:
+                df["sma50"] = df["close"].mean()
             
         except Exception as e:
             print(f"Warning: Error calculating indicators: {e}")
+            # Fill in defaults
+            for col in ["rsi_14", "macd", "macd_signal", "bb_upper", "bb_lower", "sma20", "sma50"]:
+                if col not in df.columns:
+                    df[col] = df["close"].mean() if col != "rsi_14" else 50.0
         
         return df
 
@@ -341,6 +455,331 @@ class PortfolioManager:
         
         return {"actions": actions}
     
+    def make_trading_decision_with_llm(self, portfolio_state: Dict, llm_client, mode: str = "safe_trading") -> Dict:
+        """
+        Make trading decisions using Claude LLM with technical indicators.
+        
+        The LLM receives:
+        - All technical indicators (RSI, MACD, Bollinger Bands, SMAs)
+        - Current portfolio state
+        - Recent trade history (last 24 hours) for context and memory
+        - Clear instructions on how to interpret signals
+        
+        Args:
+            portfolio_state: Current portfolio state with market signals
+            llm_client: Anthropic client instance
+            mode: "safe_trading" (risk management) or "buy_and_hold" (debug mode)
+        
+        Returns:
+            {"actions": [list of trading actions]}
+        """
+        if not HAS_ANTHROPIC or not llm_client:
+            print("\u26a0️  LLM client not available, using rule-based fallback")
+            return self.make_trading_decision(portfolio_state)
+        
+        try:
+            # ================================================================
+            # STEP 1: Create prompt with all technical indicators
+            # ================================================================
+            # Convert timestamp to ISO format string (handle pandas Timestamp)
+            timestamp = portfolio_state.get("timestamp", datetime.now())
+            if hasattr(timestamp, 'isoformat'):
+                timestamp_str = timestamp.isoformat()
+            else:
+                timestamp_str = str(timestamp)
+            
+            # Extract current holdings for LLM decision-making
+            holdings = {}
+            for position in portfolio_state["positions"]:
+                holdings[position["symbol"]] = {
+                    "shares": position["shares"],
+                    "entry_price": round(position["entry_price"], 2),
+                    "current_price": round(position["current_price"], 2),
+                    "position_value": round(position["position_value"], 2),
+                    "pnl_pct": round(position["pnl_pct"], 2)
+                }
+            
+            # Extract recent trade history (last 24 hours) for LLM memory
+            # This prevents LLM from re-entering stocks too soon
+            recent_trades = []
+            cutoff_time = timestamp - timedelta(hours=24)
+            for trade in self.trades:
+                if trade["timestamp"] > cutoff_time:
+                    recent_trades.append({
+                        "symbol": trade["symbol"],
+                        "side": trade["side"],
+                        "shares": trade["shares"],
+                        "price": round(float(trade["price"]), 2),
+                        "timestamp": trade["timestamp"].isoformat() if hasattr(trade["timestamp"], 'isoformat') else str(trade["timestamp"])
+                    })
+            
+            market_snapshot = {
+                "timestamp": timestamp_str,
+                "portfolio": {
+                    "cash": round(portfolio_state["cash"], 2),
+                    "positions_value": round(portfolio_state["positions_value"], 2),
+                    "total_equity": round(portfolio_state["total_equity"], 2),
+                    "num_positions": len(portfolio_state["positions"])
+                },
+                "current_holdings": holdings,  # What we currently own
+                "recent_trades": recent_trades,  # Last 24h of trades (memory)
+                "top_signals": {}
+            }
+            
+            # Add market signals to snapshot
+            signals = portfolio_state["market_signals"]
+            
+            # For buy-and-hold mode, use ALL 30 DJIA stocks (match baseline)
+            if mode == "buy_and_hold":
+                # Use all DJIA 30 stocks (same as baseline)
+                symbols_to_include = [s for s in DJIA_30 if s in signals]
+            else:
+                # For safe_trading, use RSI extremes (most tradeable opportunities)
+                rsi_sorted = sorted(
+                    [(sym, sig.get("rsi", 50)) for sym, sig in signals.items()],
+                    key=lambda x: abs(x[1] - 50),  # Distance from neutral
+                    reverse=True
+                )
+                symbols_to_include = [sym for sym, _ in rsi_sorted[:10]]
+            
+            for symbol in symbols_to_include:
+                signal = signals[symbol]
+                
+                # Extract values, allowing zero values (they're still valid prices)
+                rsi = float(signal.get("rsi", 50)) if pd.notna(signal.get("rsi")) else 50.0
+                macd = float(signal.get("macd", 0)) if pd.notna(signal.get("macd")) else 0.0
+                macd_sig = float(signal.get("macd_signal", 0)) if pd.notna(signal.get("macd_signal")) else 0.0
+                sma20 = float(signal.get("sma20", 0)) if pd.notna(signal.get("sma20")) else 0.0
+                sma50 = float(signal.get("sma50", 0)) if pd.notna(signal.get("sma50")) else 0.0
+                bb_upper = float(signal.get("bb_upper", 0)) if pd.notna(signal.get("bb_upper")) else 0.0
+                bb_lower = float(signal.get("bb_lower", 0)) if pd.notna(signal.get("bb_lower")) else 0.0
+                price = float(signal.get("price", 0)) if pd.notna(signal.get("price")) else 0.0
+                
+                # Always include these stocks with their price (critical for LLM calculation)
+                market_snapshot["top_signals"][symbol] = {
+                    "price": price,
+                    "rsi": rsi,
+                    "macd": macd,
+                    "macd_signal": macd_sig,
+                    "sma20": sma20,
+                    "sma50": sma50,
+                    "bb_upper": bb_upper,
+                    "bb_lower": bb_lower,
+                }
+            
+            # Ensure market_snapshot is fully JSON-serializable before sending
+            try:
+                json.dumps(market_snapshot)  # Verify it's serializable
+            except TypeError as e:
+                print(f"   ⚠️  Market snapshot serialization error: {e}")
+                print(f"   Falling back to rule-based logic")
+                return self.make_trading_decision(portfolio_state)
+            
+            # DEBUG: Show what's in market_snapshot for buy-and-hold mode
+            if mode == "buy_and_hold" and not self.positions:
+                print(f"\n   DEBUG market_snapshot:")
+                print(f"     Cash: ${market_snapshot['portfolio']['cash']}")
+                print(f"     Top signals count: {len(market_snapshot['top_signals'])}")
+                if market_snapshot['top_signals']:
+                    for symbol, signal in list(market_snapshot['top_signals'].items())[:3]:
+                        print(f"       {symbol}: price=${signal.get('price', 'MISSING')}")
+                print()
+            
+            prompt = create_prompt(market_snapshot, mode=mode)
+            
+            print(f"\n🤖 Calling LLM for trading decision...")
+            print(f"   Signals analyzed: {len(market_snapshot['top_signals'])} stocks")
+            print(f"   Portfolio: Cash=${market_snapshot['portfolio']['cash']:.0f}, Equity=${market_snapshot['portfolio']['total_equity']:.0f}")
+            print(f"   Top signals:")
+            for symbol, signal in list(market_snapshot['top_signals'].items())[:3]:
+                rsi = signal.get('rsi', 50)
+                price = signal.get('price', 0)
+                print(f"      {symbol}: ${price:.2f} (RSI={rsi:.1f})")
+            
+            # ================================================================
+            # STEP 2: Call Claude with technical indicator analysis
+            # ================================================================
+            response = llm_client.messages.create(
+                model=LLM_MODEL_NAME,
+                max_tokens=2000,  # Reduced from 3000 (saves tokens)
+                system="""You are an expert quantitative trading advisor analyzing DJIA stocks.
+
+You have deep knowledge of:
+- Technical analysis (RSI, MACD, Bollinger Bands, Moving Averages)
+- Indicator interpretation and confluence
+- Risk management and position sizing
+- Trading psychology and market microstructure
+
+IMPORTANT INSTRUCTIONS:
+1. Analyze EACH stock signal provided (don't skip any)
+2. For each stock, decide: BUY, SELL, or HOLD
+3. Always include a confidence score (0.0-1.0)
+4. Return a JSON object with an "actions" array containing one entry per stock
+5. Even if you decide HOLD, include it in the actions array
+6. Respond with ONLY valid JSON - no explanations outside JSON
+
+Make precise, actionable trading decisions based on the technical indicators provided.""",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            
+            llm_response = response.content[0].text
+            
+            # ================================================================
+            # STEP 3: Parse and validate LLM response
+            # ================================================================
+            print(f"\n📫 Parsing LLM response...")
+            print(f"   Raw response (first 300 chars): {llm_response[:300]}")
+            
+            try:
+                # Extract JSON from response
+                # First, strip markdown code fences if present
+                response_cleaned = llm_response
+                if '```json' in response_cleaned:
+                    response_cleaned = response_cleaned.replace('```json', '').replace('```', '')
+                elif '```' in response_cleaned:
+                    response_cleaned = response_cleaned.replace('```', '')
+                
+                start = response_cleaned.find('{')
+                end = response_cleaned.rfind('}') + 1
+                if start < 0 or end <= 0:
+                    print(f"   ❌ No JSON found in response")
+                    print(f"   Full response: {response_cleaned[:500]}")
+                    return {"actions": []}
+                
+                json_str = response_cleaned[start:end]
+                
+                # Try to parse
+                try:
+                    decision = json.loads(json_str)
+                    print(f"   ✅ JSON parsed successfully")
+                except json.JSONDecodeError as e:
+                    # Try to fix common formatting issues
+                    print(f"   ⚠️  Initial parse failed: {e}")
+                    print(f"   Attempting to fix JSON formatting...")
+                    
+                    json_str_fixed = fix_json_formatting(json_str)
+                    try:
+                        decision = json.loads(json_str_fixed)
+                        print(f"   ✅ JSON fixed and parsed successfully!")
+                    except json.JSONDecodeError as e2:
+                        print(f"   ❌ Still failed after fix: {e2}")
+                        print(f"   Error at line {e2.lineno}, column {e2.colno}")
+                        
+                        # Show detailed context around error
+                        lines = json_str_fixed.split('\n')
+                        if e2.lineno <= len(lines):
+                            start = max(0, e2.lineno - 3)
+                            end = min(len(lines), e2.lineno + 2)
+                            print(f"\n   Context around error (lines {start+1}-{end}):")
+                            for i in range(start, end):
+                                marker = ">> " if i == e2.lineno - 1 else "   "
+                                print(f"   {marker}{i+1:3d}: {lines[i][:70]}")
+                        
+                        # Try one more aggressive fix
+                        print(f"\n   Attempting second fix attempt (validate structure)...")
+                        try:
+                            # Count opening vs closing brackets
+                            open_count = json_str_fixed.count('{')
+                            close_count = json_str_fixed.count('}')
+                            if open_count != close_count:
+                                print(f"   Bracket mismatch: {open_count} open, {close_count} close")
+                                # Remove extra closing brackets from the end
+                                while json_str_fixed.count('}') > json_str_fixed.count('{'):
+                                    json_str_fixed = json_str_fixed.rsplit('}', 1)[0] + '}'
+                                print(f"   Removed extra closing brackets")
+                            
+                            decision = json.loads(json_str_fixed)
+                            print(f"   ✅ JSON fixed after structure cleanup!")
+                        except json.JSONDecodeError as e3:
+                            print(f"   ❌ Cannot fix: {e3}")
+                            return {"actions": []}
+                
+                print(f"   Actions from LLM: {len(decision.get('actions', []))}")
+                
+            except (json.JSONDecodeError, ValueError, Exception) as e:
+                print(f"   ❌ Failed to parse JSON: {e}")
+                print(f"   LLM response: {llm_response[:500]}...")
+                return {"actions": []}
+            
+            # ================================================================
+            # STEP 4: Convert LLM decisions to actions
+            # ================================================================
+            actions = []
+            llm_actions = decision.get("actions", [])
+            
+            if not llm_actions:
+                print(f"   ⚠️  LLM returned no actions. Decision object: {decision}")
+                print(f"   Falling back to rule-based logic")
+                return self.make_trading_decision(portfolio_state)
+            
+            for llm_action in llm_actions:
+                symbol = llm_action.get("symbol")
+                action_type = llm_action.get("action", "hold").lower()
+                confidence = llm_action.get("confidence", 0.5)
+                reasoning = llm_action.get("reasoning", "")
+                
+                print(f"\n   Processing: {symbol} ({action_type.upper()}, conf={confidence:.0%})")
+                print(f"      Reasoning: {reasoning[:60]}...")
+                
+                # Skip low-confidence decisions
+                if confidence < 0.3:
+                    print(f"      ⏸️  Skipping (confidence {confidence:.0%} too low)")
+                    continue
+                
+                if symbol not in DJIA_30:
+                    print(f"   ❌ {symbol}: Invalid symbol, skipping")
+                    continue
+                
+                signal = signals.get(symbol, {})
+                price = float(signal.get("price", 0)) if signal.get("price") else 0.0
+                
+                if action_type == "buy":
+                    # Use position_size from LLM directly
+                    shares = llm_action.get("position_size", 0)
+                    
+                    # If LLM didn't provide position_size, calculate from confidence
+                    if shares == 0:
+                        base_risk = portfolio_state["total_equity"] * 0.02
+                        risk_amount = base_risk * confidence
+                        shares = int(risk_amount / price) if price > 0 else 0
+                    
+                    if shares > 0 and shares * price <= self.cash:
+                        actions.append({
+                            "symbol": symbol,
+                            "action": "buy",
+                            "shares": shares,
+                            "reason": f"[LLM] {reasoning} (confidence: {confidence:.0%})",
+                            "confidence": confidence
+                        })
+                        print(f"      ✅ BUY {symbol}: {shares} shares @ ${price:.2f} (conf: {confidence:.0%})")
+                    else:
+                        print(f"      ⚠️  BUY {symbol}: Skip (insufficient cash: need ${shares*price:,.0f}, have ${self.cash:,.0f})")
+                
+                elif action_type == "sell":
+                    if symbol in self.positions and self.positions[symbol] > 0:
+                        actions.append({
+                            "symbol": symbol,
+                            "action": "sell",
+                            "shares": self.positions[symbol],
+                            "reason": f"[LLM] {reasoning} (confidence: {confidence:.0%})",
+                            "confidence": confidence
+                        })
+                        print(f"      ✅ SELL {symbol}: {self.positions[symbol]} shares @ ${price:.2f} (conf: {confidence:.0%})")
+                    else:
+                        print(f"      ⚠️  SELL {symbol}: Skip (not in portfolio, only owns: {list(self.positions.keys())})")
+                
+                # else: HOLD is implicit (don't add to actions)
+            
+            print(f"   ✅ Total actions: {len(actions)}\n")
+            return {"actions": actions}
+        
+        except Exception as e:
+            print(f"\n❌ LLM decision error: {e}")
+            print(f"   Falling back to rule-based logic\n")
+            return self.make_trading_decision(portfolio_state)
+    
     def execute_actions(self, actions: List[Dict], market_data: Dict, timestamp: datetime):
         """Execute trading decisions."""
         for action in actions:
@@ -428,12 +867,41 @@ class PortfolioManager:
 class HourlyBacktester:
     """Runs hourly backtest with agent and baselines."""
     
-    def __init__(self, start_date: str, end_date: str, session_id: str = "legacy-demo-session"):
+    def __init__(self, start_date: str, end_date: str, session_id: str = "legacy-demo-session", use_llm: bool = True, mode: str = "safe_trading"):
+        # Validate and swap dates if they're in the wrong order
+        from datetime import datetime as dt_parser
+        try:
+            start = dt_parser.strptime(start_date, "%Y-%m-%d")
+            end = dt_parser.strptime(end_date, "%Y-%m-%d")
+            
+            if start > end:
+                print(f"⚠️  Dates were backwards ({start_date} > {end_date}). Swapping...")
+                start_date, end_date = end_date, start_date
+        except ValueError:
+            pass  # Invalid date format, let Alpaca handle the error
+        
         self.start_date = start_date
         self.end_date = end_date
         self.session_id = session_id
+        self.mode = mode  # "safe_trading" or "buy_and_hold"
         self.data_loader = AlpacaDataLoader()
         self.all_data = {}
+        self.use_llm = use_llm and HAS_ANTHROPIC
+        self.llm_client = None
+        
+        # Initialize LLM client if enabled
+        if self.use_llm:
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+            if not api_key:
+                print("⚠️  ANTHROPIC_API_KEY not set. Running without LLM.")
+                self.use_llm = False
+            else:
+                try:
+                    self.llm_client = Anthropic(api_key=api_key)
+                    print(f"✅ LLM initialized ({LLM_MODEL_NAME})")
+                except Exception as e:
+                    print(f"⚠️  Failed to initialize LLM: {e}")
+                    self.use_llm = False
     
     def load_data(self):
         """Fetch hourly data from Alpaca."""
@@ -456,6 +924,10 @@ class HourlyBacktester:
     def run_agent_backtest(self) -> Tuple[str, List[Dict]]:
         """Run backtest with agent making hourly decisions."""
         print("🤖 Running Agent backtest (hourly decisions)...\n")
+        
+        # Track LLM usage for results metadata
+        llm_calls_count = 0
+        llm_model = "rule-based"  # Default
         
         manager = PortfolioManager(initial_capital=INITIAL_CAPITAL)
         
@@ -531,9 +1003,16 @@ class HourlyBacktester:
             
             # Get portfolio state (uses real data for signals, forward-fill for valuation)
             state = manager.get_portfolio_state(market_data, price_cache, timestamp)
+            state["timestamp"] = timestamp  # Add timestamp for LLM context
             
-            # Make decision (only on real data signals)
-            decision = manager.make_trading_decision(state)
+            # Make decision (LLM if available, else rule-based)
+            if self.use_llm and self.llm_client:
+                decision = manager.make_trading_decision_with_llm(state, self.llm_client, mode=self.mode)
+                llm_calls_count += 1  # Track that LLM was used
+                if llm_calls_count == 1:  # Set on first call
+                    llm_model = LLM_MODEL_NAME
+            else:
+                decision = manager.make_trading_decision(state)
             
             # Execute trades (only if real data available)
             manager.execute_actions(decision["actions"], market_data, timestamp)
@@ -572,13 +1051,17 @@ class HourlyBacktester:
             total_return=total_return,
             sharpe_ratio=self._calc_sharpe(equity_curve),
             max_drawdown=self._calc_max_dd(equity_curve),
-            num_trades=len(manager.trades)
+            num_trades=len(manager.trades),
+            llm_model=llm_model  # Track which model was used
         )
         
         db.insert_equity_points(run_id, equity_curve)
         
         print(f"\n  ✅ Agent backtest complete")
         print(f"     • Run ID: {run_id}")
+        model_display = LLM_MODEL_NAME if llm_calls_count > 0 else "rule-based"
+        print(f"     • Model: {model_display} (✅ LLM enabled)" if llm_calls_count > 0 else f"     • Model: {model_display} (❌ fallback)")
+        print(f"     • LLM Calls: {llm_calls_count}")
         print(f"     • Trades: {len(manager.trades)}")
         print(f"     • Final: ${final_eq:,.0f}")
         print(f"     • Return: {total_return*100:+.2f}%\n")
@@ -589,12 +1072,13 @@ class HourlyBacktester:
         """Buy and hold baseline using shared baseline generator."""
         print("📊 Running Buy & Hold baseline...\n")
         
-        # Use shared baseline generator
+        # Use shared baseline generator (10-stock buy-and-hold)
         equity_history, _ = generate_baselines(
             bars_by_symbol=self.all_data,
             start_date=self.start_date,
             end_date=self.end_date,
-            initial_capital=INITIAL_CAPITAL
+            initial_capital=INITIAL_CAPITAL,
+            symbols_list=TOP_10
         )
         
         if not equity_history:
@@ -634,7 +1118,8 @@ class HourlyBacktester:
         """DJIA index baseline using shared baseline generator."""
         print("📊 Running DJIA Index baseline...\n")
         
-        # Use shared baseline generator
+        # Use shared baseline generator (full DJIA 30 stocks - don't filter)
+        # DJIA is a market index and should track all 30 stocks regardless of agent mode
         _, equity_history = generate_baselines(
             bars_by_symbol=self.all_data,
             start_date=self.start_date,
@@ -736,10 +1221,25 @@ def main():
     parser.add_argument("--end", default=DEFAULT_END, help="End date (YYYY-MM-DD)")
     parser.add_argument("--session-id", default="legacy-demo-session", help="Session ID for isolation")
     parser.add_argument("--clear", action="store_true", help="Clear all data first")
+    parser.add_argument("--use-llm", action="store_true", default=True, help="Use LLM for trading decisions (default: True)")
+    parser.add_argument("--no-llm", dest="use_llm", action="store_false", help="Disable LLM, use rule-based logic")
+    parser.add_argument("--mode", default="safe_trading", choices=["safe_trading", "buy_and_hold"], help="Agent mode: 'safe_trading' (risk management) or 'buy_and_hold' (debug)")
     
     args = parser.parse_args()
     
     session_id = args.session_id
+    
+    # Validate and swap dates if backwards
+    from datetime import datetime as dt_parser
+    try:
+        start = dt_parser.strptime(args.start, "%Y-%m-%d")
+        end = dt_parser.strptime(args.end, "%Y-%m-%d")
+        
+        if start > end:
+            print(f"⚠️  Dates were backwards ({args.start} > {args.end}). Swapping...\n")
+            args.start, args.end = args.end, args.start
+    except ValueError:
+        pass  # Invalid format, let it error naturally
     
     if args.clear:
         print("🗑️ Clearing all existing data...\n")
@@ -752,10 +1252,20 @@ def main():
     print(f"Stocks: {len(DJIA_30)} (DJIA)")
     print(f"Trading: Hourly (Agent decisions based on indicators)")
     print(f"Capital: ${INITIAL_CAPITAL:,.0f}")
+    
+    # Show mode
+    mode_display = args.mode.replace("_", " ").title()
+    print(f"Mode: {mode_display}")
     print(f"{'='*70}\n")
     
-    # Initialize backtester
-    backtester = HourlyBacktester(args.start, args.end, session_id)
+    # Initialize backtester (with LLM if available and enabled)
+    # Note: dates are validated in __init__ if they somehow got reversed again
+    backtester = HourlyBacktester(args.start, args.end, session_id, use_llm=args.use_llm, mode=args.mode)
+    
+    if backtester.use_llm:
+        print(f"🧠 Using {LLM_MODEL_NAME} for trading decisions (Mode: {mode_display})\n")
+    else:
+        print("⚙️  Using rule-based logic for trading decisions\n")
     
     # Step 1: Load data
     print("1️⃣ Loading historical hourly data from Alpaca...")
@@ -765,11 +1275,32 @@ def main():
     print("\n2️⃣ Calculating technical indicators...")
     backtester.calculate_indicators()
     
+    # DEBUG: Show loaded symbols
+    print(f"\n📊 DEBUG - Loaded Symbols:")
+    print(f"   Total symbols loaded: {len(backtester.all_data)}")
+    print(f"   Symbols: {', '.join(sorted(backtester.all_data.keys())[:10])}{'...' if len(backtester.all_data) > 10 else ''}")
+    print(f"   Agent will buy: 10 target stocks (AAPL, MSFT, JPM, V, JNJ, UNH, WMT, HD, MA, PG)")
+    print(f"   Baselines will buy: ALL {len(backtester.all_data)} symbols equally")
+    
     # Step 3: Run backtests
-    print("3️⃣ Running backtests...\n")
+    print("\n3️⃣ Running backtests...\n")
     
     agent_id, agent_eq = backtester.run_agent_backtest()
+    
+    # DEBUG: Show what agent bought
+    print(f"\n📋 DEBUG - Agent Holdings Summary:")
+    if agent_eq:
+        agent_final = agent_eq[-1]
+        print(f"   Final equity: ${agent_final['equity']:,.0f}")
+    
     bh_id, bh_eq = backtester.run_buyhold_baseline()
+    
+    # DEBUG: Show what baseline bought
+    print(f"\n📋 DEBUG - Baseline Holdings Summary:")
+    if bh_eq:
+        bh_final = bh_eq[-1]
+        print(f"   Final equity: ${bh_final['equity']:,.0f}")
+    
     djia_id, djia_eq = backtester.run_djia_baseline()
     
     # Summary

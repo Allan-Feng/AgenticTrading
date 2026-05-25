@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
+import json
 from database import db
 from market_data import get_market_quotes
 from middleware import SessionMiddleware
@@ -108,8 +109,13 @@ app.add_middleware(CSPHeaderMiddleware)
 @app.on_event("startup")
 async def startup_event():
     """Initialize API server."""
+    import os
     print("🚀 Starting API server...")
-    print("📊 Backtesting: Baselines created by scripts/backtest_hourly_agent.py")
+    print("📊 Backtesting: LLM-powered agent via scripts/backtest_hourly_agent.py")
+    if os.getenv("ANTHROPIC_API_KEY"):
+        print("✅ ANTHROPIC_API_KEY detected - LLM trading enabled")
+    else:
+        print("⚠️ ANTHROPIC_API_KEY not set - LLM trading disabled")
     print("📊 Paper Trading: Baselines initialized on startup...")
     
     # Initialize paper trading baselines (non-blocking)
@@ -202,39 +208,62 @@ def run_backtest_background(start_date: str, end_date: str, session_id: str):
         project_dir = backend_dir.parent.resolve()
         script_path = project_dir / "scripts" / "backtest_hourly_agent.py"
         db_path = project_dir / "data" / "backtest.db"
+        venv_dir = project_dir / ".venv"
+        
+        # Determine the Python executable to use (from venv if available)
+        if venv_dir.exists():
+            python_exe = str(venv_dir / "bin" / "python3")
+            print(f"🐍 Using venv Python: {python_exe}", flush=True)
+        else:
+            python_exe = sys.executable
+            print(f"🐍 Using system Python: {python_exe}", flush=True)
         
         # Check database directory
         print(f"📁 Database path: {db_path}", flush=True)
         print(f"📁 Database dir exists: {db_path.parent.exists()}", flush=True)
         print(f"📁 Can write to {db_path.parent}: {os.access(db_path.parent, os.W_OK)}", flush=True)
         
-        # Run backtest script
+        # Run backtest script with LLM enabled
+        # Set environment variables for LLM
+        env = os.environ.copy()
+        if "ANTHROPIC_API_KEY" not in env:
+            print("⚠️ Warning: ANTHROPIC_API_KEY not set, LLM will be disabled", flush=True)
+        else:
+            print(f"✅ ANTHROPIC_API_KEY is set, LLM enabled", flush=True)
+        
+        print(f"📋 Running: {python_exe} {script_path} --start {start_date} --end {end_date} --session-id {session_id} --use-llm", flush=True)
+        
         result = subprocess.run(
-            [sys.executable, str(script_path),
+            [python_exe, str(script_path),
              "--start", start_date, "--end", end_date,
-             "--session-id", session_id],  # Pass session_id to script
+             "--session-id", session_id,
+             "--use-llm"],  # Enable LLM for real agent trading
             cwd=str(project_dir),
             capture_output=True,
             text=True,
-            timeout=300
+            timeout=1800,  # 30 minutes for LLM backtest (longer than rule-based)
+            env=env
         )
         
         # Print script output for debugging
+        print(f"\n📋 === BACKTEST SCRIPT OUTPUT ===", flush=True)
         if result.stdout:
-            print(f"📋 Backtest script stdout:\n{result.stdout[:1000]}", flush=True)
+            print(f"STDOUT:\n{result.stdout}", flush=True)
         if result.stderr:
-            print(f"⚠️ Backtest script stderr:\n{result.stderr[:1000]}", flush=True)
+            print(f"STDERR:\n{result.stderr}", flush=True)
+        print(f"Return code: {result.returncode}", flush=True)
+        print(f"=== END BACKTEST OUTPUT ===", flush=True)
         
         if result.returncode != 0:
             error_msg = result.stderr if result.stderr else result.stdout
-            backtest_status["error"] = error_msg[-500:]
-            print(f"❌ Backtest failed (returncode={result.returncode}): {error_msg[-200:]}", flush=True)
+            backtest_status["error"] = f"Backtest failed with return code {result.returncode}. {error_msg[-500:]}"
+            print(f"❌ Backtest failed (returncode={result.returncode})", flush=True)
         else:
             runs = db.get_runs_by_mode("backtest")
             backtest_status["runs_count"] = len(runs)
             print(f"✅ Backtest completed. Found {len(runs)} runs in database.", flush=True)
             if len(runs) > 0:
-                print(f"   Run IDs: {[r['run_id'] for r in runs[:3]]}", flush=True)
+                print(f"   Latest run IDs: {[r['run_id'] for r in runs[:3]]}", flush=True)
     except Exception as e:
         backtest_status["error"] = str(e)
         print(f"❌ Backtest exception: {e}", flush=True)
@@ -533,6 +562,33 @@ async def compare_runs(run_ids: str, request: Request):
             'best_return': best_run.metrics['total_return'] if best_run else None
         }
     )
+
+
+# ============================================================================
+# Default Configuration Routes
+# ============================================================================
+
+@app.get("/config/defaults")
+async def get_defaults():
+    """
+    Get default configuration for the website.
+    
+    Returns:
+        Default run IDs and settings for initial page load
+    """
+    defaults_path = Path(__file__).parent.parent / "config" / "defaults.json"
+    
+    if not defaults_path.exists():
+        return {
+            "error": "No defaults configured",
+            "message": "Create config/defaults.json to set default runs and settings"
+        }
+    
+    import json
+    with open(defaults_path, 'r') as f:
+        defaults = json.load(f)
+    
+    return defaults
 
 
 # ============================================================================

@@ -31,6 +31,9 @@ DJIA_30 = [
     "CVX", "NKE", "AMEX", "TRV", "WBA"
 ]
 
+# Top 10 DJIA stocks (for 10-stock buy-and-hold mode)
+TOP_10_STOCKS = ["AAPL", "MSFT", "JPM", "V", "JNJ", "WMT", "PG", "MA", "HD", "DIS"]
+
 
 class TradingAction(str, Enum):
     """Allowed trading actions"""
@@ -294,33 +297,220 @@ def log_audit_trail(
 # ============================================================================
 # Safe Prompt Template (for integration)
 # ============================================================================
+# ============================================================================
+# AGENT MODE PROMPTS
+# ============================================================================
+BUY_AND_HOLD_PROMPT = """You are a buy-and-hold backtest agent.
 
-SAFE_TRADING_PROMPT = """You are a trading decision advisor for a portfolio of DJIA stocks.
+Return ONLY valid JSON. No markdown. No code fences. No explanations.
+Goal:
+- First hour: buy 10 stocks, about $10,000 per stock.
+- Later hours: hold existing positions.
+- Never sell.
 
-CRITICAL CONSTRAINTS (non-negotiable):
-1. You CANNOT access the internet, call APIs, or use web searches
-2. You CANNOT use tools, functions, or execute code
-3. Your response MUST be ONLY valid JSON (no other text, no explanations)
-4. You CANNOT attempt tool_use, function_calls, or any API access
-5. If unsure, respond with: {{"action": "hold"}}
+Rules:
+1. Use only market_snapshot and VALID SYMBOLS.
+2. If current_holdings is empty, generate BUY actions.
+3. If current_holdings is not empty, generate HOLD actions for existing positions.
+4. Do not sell.
+5. Do not return all HOLD when current_holdings is empty.
+6. Do not change the JSON format.
 
-MARKET DATA (read-only):
+Stocks to buy on first hour:
+Top 10 DJIA stocks: AAPL, MSFT, JPM, V, JNJ, WMT, PG, MA, HD, DIS
+
+First-hour buy logic:
+- allocation_per_stock = 10000 (which is 100000 / 10)
+- For each stock, find its current price in market_snapshot.
+- position_size = int(10000 / current_price)
+- If the stock is not in VALID SYMBOLS or price is missing, skip it.
+- Confidence should be 0.95.
+- Reasoning should be: "Buy-and-hold initial purchase - equal 10-stock allocation."
+
+Later-hour hold logic:
+- For each of the 10 holdings, return action="hold".
+- position_size must be 0.
+- Confidence should be 0.90.
+- Reasoning should be: "Buy-and-hold: maintain position - 10-stock portfolio."
+- Generate exactly 10 HOLD actions (one per stock).
+
+MARKET SNAPSHOT:
 {market_snapshot}
 
-VALID SYMBOLS: {valid_symbols}
+VALID SYMBOLS:
+{valid_symbols}
 
-RESPONSE SCHEMA (JSON only):
+Return ONLY this JSON format:
+
 {{
-  "action": "buy|sell|hold",
-  "symbol": "<DJIA symbol>",
-  "confidence": <0.0-1.0>,
-  "reasoning": "<max 500 chars>",
-  "position_size": <integer>,
-  "stop_loss_price": <optional float>,
-  "take_profit_price": <optional float>
+  "actions": [
+    {{
+      "action": "buy|sell|hold",
+      "symbol": "<DJIA symbol from VALID SYMBOLS>",
+      "confidence": <float 0.0-1.0>,
+      "reasoning": "<short reason, max 500 chars>",
+      "position_size": <integer shares, 0 for hold>,
+      "stop_loss_price": <float or null>,
+      "take_profit_price": <float or null>
+    }}
+  ]
 }}
 
-Respond with ONLY the JSON object. Nothing else. No markdown, no explanations."""
+Output ONLY valid JSON.
+"""
+
+# SAFE_TRADING_PROMPT = """You are testing a BUY-AND-HOLD strategy for multiple DJIA stocks.
+
+# === STRATEGY ===
+# 1. On FIRST hour: Equally buy the top 10 DJIA stocks (by signal strength)
+#    - Divide $100,000 by 10 = $10,000 per stock
+#    - Buy as many shares as possible for each
+# 2. On ALL other hours: HOLD (do nothing)
+# 3. Never sell during the period
+
+# === CRITICAL CONSTRAINTS ===
+# 1. You CANNOT access the internet, call APIs, or use web searches
+# 2. You CANNOT use tools, functions, or execute code
+# 3. Your response MUST be ONLY valid JSON (no other text, no explanations)
+
+# === RESPONSE FORMAT (JSON ONLY) ===
+# {{
+#   "actions": [
+#     {{
+#       "action": "buy|hold",
+#       "symbol": "<DJIA stock>",
+#       "confidence": 1.0,
+#       "reasoning": "Buy and hold DJIA stocks",
+#       "position_size": <integer shares, or 0 for hold>,
+#       "stop_loss_price": null,
+#       "take_profit_price": null
+#     }},
+#     ...
+#   ]
+# }}
+
+# === MARKET DATA ===
+# {market_snapshot}
+
+# === INSTRUCTIONS ===
+# FIRST TRADE ONLY:
+# - For each of the 10 stocks in top_signals:
+#   - Allocate: $100,000 / 10 = $10,000 per stock
+#   - Calculate shares: floor($10,000 / stock_price)
+#   - Include in actions array as BUY
+
+# ALL OTHER TRADES:
+# - For all 10 stocks: return HOLD action with position_size=0
+
+# Respond with ONLY valid JSON."""
+SAFE_TRADING_PROMPT = """You are an active DJIA portfolio trading agent.
+
+Goal:
+Trade actively enough to beat passive baselines, but avoid random trades.
+Use only the provided market_snapshot. Do not use internet, tools, APIs, or code.
+
+Output rules:
+- Return ONLY valid JSON.
+- No markdown.
+- No code fences.
+- No explanations outside JSON.
+- Use only symbols from VALID SYMBOLS.
+- Only sell symbols that are currently owned.
+- Keep reasoning short.
+
+Trading style:
+- Prefer BUY when a stock has bullish trend or momentum.
+- Prefer HOLD when signals are mixed.
+- Prefer SELL only when an owned stock clearly weakens.
+- Do not return all HOLD if there is cash available and at least one reasonable bullish setup.
+- Do not over-focus on RSI alone.
+
+BUY logic:
+Buy when at least 2 of these are true:
+- price is above SMA20
+- price is above SMA50
+- SMA20 is above SMA50
+- MACD is above signal
+- RSI is between 35 and 70
+- recent return or relative strength is positive
+- price is recovering from oversold conditions
+
+Strong BUY when at least 4 of the above are true.
+
+Avoid BUY when:
+- price is below SMA50 and MACD is bearish
+- RSI is above 80
+- the same symbol was bought very recently
+- cash is too low
+
+SELL logic:
+Only sell owned stocks.
+
+Sell when at least 2 of these are true:
+- price is below SMA20
+- price is below SMA50
+- MACD is below signal
+- RSI is above 75 and momentum is weakening
+- recent return or relative strength is poor
+- the position has a meaningful unrealized loss and trend is weak
+
+Avoid SELL when:
+- the stock is still above SMA20 and SMA50
+- MACD is bullish
+- the only issue is high RSI in a strong uptrend
+
+HOLD logic:
+Hold when:
+- signals are mixed
+- the stock is already owned and trend is still acceptable
+- cash is limited
+- recent_trades show the symbol was traded too recently
+
+Activity rule:
+- If cash is available and the portfolio has fewer than 8 holdings, prefer 2 to 5 BUY actions.
+- If the portfolio already has many holdings, prefer holding winners and selling weak positions.
+- Do not output more than 8 actions total.
+- Prioritize the best opportunities from top_signals and current_holdings.
+
+Position sizing:
+- Medium BUY: use about 5% of portfolio value.
+- Strong BUY: use about 8% to 10% of portfolio value.
+- Never use more than 12% of portfolio value on one new stock.
+- position_size must be an integer share count.
+- If price or cash is missing, use position_size 1 for BUY.
+- For HOLD, position_size must be 0.
+- For SELL, position_size should be the shares to sell if available; otherwise use 1.
+
+Confidence:
+- BUY confidence should usually be 0.65 to 0.90.
+- SELL confidence should usually be 0.65 to 0.90.
+- HOLD confidence should usually be 0.30 to 0.60.
+- Use confidence above 0.85 only for very clear setups.
+
+MARKET SNAPSHOT:
+{market_snapshot}
+
+VALID SYMBOLS:
+{valid_symbols}
+
+Return exactly this JSON shape:
+
+{{
+  "actions": [
+    {{
+      "action": "buy|sell|hold",
+      "symbol": "<DJIA symbol>",
+      "confidence": 0.75,
+      "reasoning": "<short reason using trend, momentum, RSI, or risk>",
+      "position_size": 1,
+      "stop_loss_price": null,
+      "take_profit_price": null
+    }}
+  ]
+}}
+
+Return ONLY valid JSON.
+"""
 
 
 def create_safe_prompt(market_snapshot: Dict[str, Any]) -> str:
@@ -329,3 +519,23 @@ def create_safe_prompt(market_snapshot: Dict[str, Any]) -> str:
         market_snapshot=json.dumps(market_snapshot, indent=2),
         valid_symbols=", ".join(DJIA_30)
     )
+
+
+def create_prompt(market_snapshot: Dict[str, Any], mode: str = "safe_trading") -> str:
+    """
+    Create a prompt for LLM trading decision based on mode.
+    
+    Args:
+        market_snapshot: Market data snapshot
+        mode: "safe_trading" or "buy_and_hold"
+    
+    Returns:
+        Formatted prompt string
+    """
+    if mode == "buy_and_hold":
+        return BUY_AND_HOLD_PROMPT.format(
+            market_snapshot=json.dumps(market_snapshot, indent=2),
+            valid_symbols=", ".join(DJIA_30)
+        )
+    else:
+        return create_safe_prompt(market_snapshot)

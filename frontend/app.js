@@ -20,6 +20,80 @@ function initSession() {
   window.SESSION_ID = sessionId;
 }
 
+// Load default configuration from backend
+async function loadDefaults() {
+  try {
+    const defaultsUrl = API_BASE === 'http://localhost:8000' 
+      ? 'http://localhost:8000/config/defaults' 
+      : 'https://agentictrading.onrender.com/config/defaults';
+    
+    console.log('📥 Fetching defaults from:', defaultsUrl);
+    
+    const response = await fetch(defaultsUrl);
+    console.log('🔍 Response status:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      console.warn('⚠️  Failed to fetch defaults:', response.status, response.statusText);
+      return;
+    }
+    
+    const defaults = await response.json();
+    console.log('📋 Raw defaults response:', defaults);
+    
+    if (!defaults || defaults.error) {
+      console.log('⚠️  Error in defaults:', defaults?.error || 'Unknown error');
+      console.log('⚠️  No defaults configured, using URL params instead');
+      return;
+    }
+    
+    console.log('✅ Loaded defaults:', defaults);
+    
+    // Apply defaults to UI
+    if (defaults.defaultSettings) {
+      const settings = defaults.defaultSettings;
+      
+      // Set date inputs (using correct ID selectors)
+      if (settings.startDate) {
+        const startInput = document.getElementById('startDate');
+        if (startInput) {
+          startInput.value = settings.startDate;
+          console.log('✅ Set startDate to:', settings.startDate);
+        } else {
+          console.warn('⚠️  Could not find #startDate input');
+        }
+      }
+      
+      if (settings.endDate) {
+        const endInput = document.getElementById('endDate');
+        if (endInput) {
+          endInput.value = settings.endDate;
+          console.log('✅ Set endDate to:', settings.endDate);
+        } else {
+          console.warn('⚠️  Could not find #endDate input');
+        }
+      }
+      
+      // Set asset universe
+      if (settings.assetList && settings.assetList.length > 0) {
+        // Only auto-select if it's Magnificent 7
+        if (settings.assetList.length === 7 && settings.assetList.includes('AAPL') && settings.assetList.includes('NVDA')) {
+          selectPreset('mag7');
+          console.log('✅ Selected Magnificent 7 preset');
+        }
+      }
+      
+      console.log('✅ Applied default settings to UI');
+    }
+    
+    // Store defaults globally
+    window.DEFAULT_RUNS = defaults.defaultRuns || {};
+    console.log('📋 Default run IDs:', window.DEFAULT_RUNS);
+    
+  } catch (error) {
+    console.warn('⚠️  Failed to load defaults:', error.message);
+  }
+}
+
 // Parse URL config for TensorFlow Playground-style sharing
 function loadConfigFromURL() {
   const params = new URLSearchParams(window.location.search);
@@ -100,10 +174,14 @@ const API_BASE = window.location.hostname === 'localhost' || window.location.hos
     ? 'http://localhost:8000'
     : 'https://agentictrading.onrender.com';
 
+// Store default run IDs
+window.DEFAULT_RUNS = {};
+
 let chartInstance = null;
 let currentMode = "backtest";
 let allRuns = [];
 let comparisonData = null;
+let defaultConfig = null;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async () => {
@@ -191,6 +269,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.addEventListener('click', (e) => removeChip(e.target.closest('.chip')));
     });
 
+    // Load default configuration if available (after DOM is ready)
+    try {
+      await loadDefaults();
+    } catch (error) {
+      console.warn('Failed to load defaults:', error);
+    }
+
     // Load initial data
     await loadData();
     
@@ -202,6 +287,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Refresh ticker every 30 seconds
     setInterval(loadMarketTicker, 30000);
+    
+    console.log('🎯 Dashboard ready. Default runs:', window.DEFAULT_RUNS || 'None configured');
 });
 
 /**

@@ -17,6 +17,7 @@ EXEMPT_PATHS = {
     '/health',
     '/api/health',
     '/ticker',
+    '/config/defaults',  # Default configuration (public, no session needed)
 }
 
 EXEMPT_EXTENSIONS = {'.js', '.css', '.png', '.jpg', '.gif', '.svg', '.woff', '.woff2', '.ttf'}

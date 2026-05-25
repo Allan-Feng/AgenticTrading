@@ -112,42 +112,47 @@ class BacktestDatabase:
         conn.close()
     
     def _migrate_schema(self):
-        """Migrate existing databases: add session_id column if missing."""
+        """Migrate existing databases: add session_id and llm_model columns if missing."""
         conn = self._get_connection()
         cursor = conn.cursor()
         
         try:
-            # Check if session_id column exists
+            # Check what columns exist
             cursor.execute("PRAGMA table_info(agent_runs)")
             columns = [row[1] for row in cursor.fetchall()]
             
+            # Add session_id if missing
             if 'session_id' not in columns:
                 print("🔄 Migrating: Adding session_id to agent_runs...")
-                
-                # Add session_id column with default value
                 cursor.execute("""
                     ALTER TABLE agent_runs 
                     ADD COLUMN session_id TEXT DEFAULT 'legacy-demo-session'
                 """)
-                
-                # Update any NULL values
                 cursor.execute("UPDATE agent_runs SET session_id = 'legacy-demo-session' WHERE session_id IS NULL")
-                
-                # Add indexes
                 cursor.execute("""
                     CREATE INDEX IF NOT EXISTS idx_agent_runs_session 
                     ON agent_runs(session_id)
                 """)
-                
                 cursor.execute("""
                     CREATE INDEX IF NOT EXISTS idx_agent_runs_session_mode 
                     ON agent_runs(session_id, mode)
                 """)
-                
                 conn.commit()
-                print("✅ Migration complete: session_id added to agent_runs")
-            else:
-                print("✅ Schema already up-to-date (session_id exists)")
+                print("✅ Added session_id to agent_runs")
+            
+            # Add llm_model if missing (tracks which LLM was used)
+            if 'llm_model' not in columns:
+                print("🔄 Migrating: Adding llm_model to agent_runs...")
+                cursor.execute("""
+                    ALTER TABLE agent_runs 
+                    ADD COLUMN llm_model TEXT DEFAULT 'rule-based'
+                """)
+                cursor.execute("UPDATE agent_runs SET llm_model = 'rule-based' WHERE llm_model IS NULL")
+                conn.commit()
+                print("✅ Added llm_model to agent_runs")
+            
+            if 'session_id' in columns and 'llm_model' in columns:
+                print("✅ Schema up-to-date (session_id, llm_model exist)")
         
         except Exception as e:
             print(f"⚠️ Migration warning: {e}")
@@ -163,8 +168,9 @@ class BacktestDatabase:
                    total_return: Optional[float] = None,
                    sharpe_ratio: Optional[float] = None,
                    max_drawdown: Optional[float] = None,
-                   num_trades: int = 0) -> None:
-        """Insert a new backtest run with session_id."""
+                   num_trades: int = 0,
+                   llm_model: str = "rule-based") -> None:
+        """Insert a new backtest run with session_id and LLM model tracking."""
         conn = self._get_connection()
         cursor = conn.cursor()
         
@@ -172,11 +178,11 @@ class BacktestDatabase:
             INSERT OR REPLACE INTO agent_runs 
             (run_id, session_id, agent_name, mode, start_date, end_date, 
              initial_equity, final_equity, total_return, sharpe_ratio, 
-             max_drawdown, num_trades)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             max_drawdown, num_trades, llm_model)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (run_id, session_id, agent_name, mode, start_date, end_date,
               initial_equity, final_equity, total_return, sharpe_ratio,
-              max_drawdown, num_trades))
+              max_drawdown, num_trades, llm_model))
         
         conn.commit()
         conn.close()
