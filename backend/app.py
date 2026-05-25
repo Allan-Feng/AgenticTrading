@@ -143,7 +143,25 @@ async def startup_event():
     else:
         print("❌ data/backtest.db NOT FOUND")
     
-    print("=== END DATABASE DEBUG ===\n")
+    print("=== END DATABASE DEBUG ===")
+    
+    # Also check database directly
+    print("\nDirect database check at startup:")
+    try:
+        import sqlite3
+        conn = sqlite3.connect('data/backtest.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM agent_runs")
+        count = cursor.fetchone()[0]
+        cursor.execute("SELECT run_id, session_id FROM agent_runs LIMIT 3")
+        rows = cursor.fetchall()
+        print(f"Total runs: {count}")
+        for run_id, session_id in rows:
+            print(f"  - {run_id}: session={session_id}")
+        conn.close()
+    except Exception as e:
+        print(f"Error: {e}")
+    print()
     
     print("📊 Backtesting: LLM-powered agent via scripts/backtest_hourly_agent.py")
     if os.getenv("ANTHROPIC_API_KEY"):
@@ -496,11 +514,28 @@ async def get_runs(request: Request, mode: Optional[str] = None):
     - mode: 'backtest' or 'paper' (optional)
     """
     session_id = request.state.session_id
+    
+    # DEBUG
+    print(f"\n\ud83d\udccd /runs endpoint called")
+    print(f"   Session ID: {session_id[:8]}...")
+    
+    # Check all runs in database
+    all_db_runs = db.get_all_runs()
+    print(f"   Total runs in DB: {len(all_db_runs)}")
+    for r in all_db_runs[:3]:
+        print(f"     - {r['run_id']}: session={r.get('session_id')}")
+    
+    # Get runs by session
+    session_runs = db.get_runs_by_session(session_id)
+    print(f"   Runs for THIS session: {len(session_runs)}")
+    
     if mode:
-        runs = [r for r in db.get_runs_by_session(session_id) if r['mode'] == mode]
+        runs = [r for r in session_runs if r['mode'] == mode]
     else:
         # Default: backtest runs only (for isolation)
-        runs = [r for r in db.get_runs_by_session(session_id) if r['mode'] == 'backtest']
+        runs = [r for r in session_runs if r['mode'] == 'backtest']
+    
+    print(f"   After mode filter: {len(runs)} runs\n")
     
     return [RunMetadata(**run) for run in runs]
 
