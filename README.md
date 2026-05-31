@@ -151,7 +151,7 @@ If you use the orchestration framework in research, please cite:
 ```bibtex
 @inproceedings{orchestration_finagents_2025,
    title     = {Orchestration Framework for Financial Agents: From Algorithmic Trading to Agentic Trading},
-   author    = {Jifeng Li et al.},
+   author    = {Jifeng Li and Arnav Grover and Abraham Alpuerto and Yupeng Cao and Xiao-Yang Liu},
    booktitle = {NeurIPS 2025 Workshop on Generative AI in Finance},
    year      = {2025},
 }
